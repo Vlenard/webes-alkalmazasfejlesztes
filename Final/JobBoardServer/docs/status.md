@@ -1,0 +1,53 @@
+# Project Status & Changelog
+
+## Current Status
+- **Stack**: Java 21, Spring Boot 3.3.4, Spring Data JPA, PostgreSQL 16, H2 Database, Springdoc OpenAPI.
+- **Architecture**: Hexagonal Architecture (Ports and Adapters) & Domain-Driven Design (DDD).
+- **Health**: Builds cleanly with `./mvnw clean test` (88/88 tests passing).
+- **Database**: PostgreSQL database `jobboard` running on port 5432; in-memory H2 test profile active for tests.
+
+## Implemented Features & Milestones
+- [x] Initialized Spring Boot 3 Maven project with Maven Wrapper (`mvnw`).
+- [x] Configured PostgreSQL database and H2 test profiles.
+- [x] Designed and implemented Hexagonal Architecture (Ports and Adapters):
+  - Domain Layer (`jobs.domain`, `applications.domain`, `auth.domain`) with pure business logic and invariants.
+  - Application Layer with Inbound Ports (`GetJobsUseCase`, `UpdateJobStatusUseCase`, `SubmitApplicationUseCase`, `UpdateApplicationStatusUseCase`, `DownloadResumeUseCase`, `RegisterUserUseCase`, `LoginUserUseCase`, `AuthenticateTokenUseCase`) and Outbound Ports (`JobRepositoryPort`, `ApplicationRepositoryPort`, `UserRepositoryPort`, `TokenServicePort`, `PasswordEncoderPort`).
+  - Web Adapters (`JobRestController`, `ApplicationRestController`, `AuthRestController`) matching frontend schemas.
+  - Persistence Adapters (`JobJpaAdapter`, `ApplicationJpaAdapter`, `UserJpaAdapter`) using Spring Data JPA.
+  - Security Adapters (`Sha256PasswordEncoderAdapter`, `JwtTokenAdapter`) with zero new Maven dependencies (pure Java HS256 JWT).
+- [x] Implemented Auth Bounded Context (`com.jobboard.auth`):
+  - `POST /api/auth/register` (user registration with role `APPLICANT` or `COMPANY_MANAGER`, company name, validation, duplicate email check).
+  - `POST /api/auth/login` (email/password verification returning signed JWT token and user info).
+  - `GET /api/auth/me` (retrieving authenticated profile via `Authorization: Bearer <token>`).
+  - Shared port `AuthenticateTokenUseCase` for validating tokens across other bounded contexts.
+  - Updated `GlobalExceptionHandler` with 400 (`InvalidUserDataException`), 409 (`UserAlreadyExistsException`), 401 (`InvalidCredentialsException`), and 403 (`UnauthorizedAccessException`).
+  - Updated `WebCorsConfig` exposing `Authorization` and `Content-Disposition` headers and supporting `PATCH`.
+- [x] Implemented Jobs Features & Permissions (`com.jobboard.jobs`):
+  - `JobStatus` enum (`ACTIVE`, `CLOSED`).
+  - Public `GET /api/jobs`: Returns ONLY `ACTIVE` job postings; closed jobs are hidden from applicants.
+  - `GET /api/jobs/my`: For `COMPANY_MANAGER` users, returns all postings (`ACTIVE` and `CLOSED`) created by that company manager.
+  - `PATCH /api/jobs/{id}/status`: Only the creator of the job (`createdByUserId`) can close or reopen their posting.
+  - Backward compatibility: Preserved legacy constructors and endpoints so existing tests and clients operate seamlessly.
+- [x] Implemented Applications Features & Resume Storage (`com.jobboard.applications`):
+  - `ApplicationStatus` enum (`PENDING`, `ACCEPTED`, `REJECTED`).
+  - File format validation: Only `.pdf` and `.docx` files are accepted for resumes; other extensions are rejected with 400 Bad Request.
+  - Multipart upload support: `POST /api/applications` (`multipart/form-data`) supporting binary file attachments along with JSON backward compatibility.
+  - Guarding closed jobs: Candidates cannot apply to `CLOSED` job postings (400 Bad Request).
+  - `GET /api/applications/my`: Candidates can review all submitted applications with dynamic status messages (`ACCEPTED` -> "A cég értesíti Önt a továbbiakról.", `REJECTED` -> "A jelentkezését elutasították.", `PENDING` -> "Jelentkezése elbírálás alatt áll.").
+  - `PATCH /api/applications/{id}/status`: Company managers can accept or reject candidate applications for their postings.
+  - `GET /api/applications/{id}/resume`: Company managers can download candidate resumes with proper `Content-Disposition: attachment` headers and MIME types.
+- [x] Updated `JobDataSeeder`:
+  - Automatically provisions default test users if missing:
+    - Company Manager: `hr@techcorp.hu` / `password123` (`COMPANY_MANAGER`, `"TechCorp Hungary"`).
+    - Candidate: `jelentkezo@pelda.hu` / `password123` (`APPLICANT`).
+  - Associates initial preset job postings with the default company manager ID.
+- [x] Configured CORS for frontend development (`http://localhost:5173`).
+- [x] Configured OpenAPI / Swagger documentation at `/swagger-ui.html`.
+- [x] Written comprehensive test suite (88 automated tests):
+  - Domain entity unit tests (`JobTest`, `JobApplicationTest`, `UserTest`).
+  - Application service unit tests (`JobServiceTest`, `ApplicationServiceTest`, `AuthServiceTest`).
+  - Infrastructure unit tests (`Sha256PasswordEncoderAdapterTest`, `JwtTokenAdapterTest`).
+  - WebMvc controller slice tests (`JobRestControllerTest`, `ApplicationRestControllerTest`, `AuthRestControllerTest`).
+  - JPA persistence adapter tests (`JobJpaAdapterTest`, `ApplicationJpaAdapterTest`, `UserJpaAdapterTest`).
+  - End-to-end integration tests (`JobBoardIntegrationTest`, `AuthIntegrationTest`).
+- [x] Created AI development guidelines (`AGENTS.md`) and Antigravity skills.
