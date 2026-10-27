@@ -13,6 +13,10 @@ public interface SpringDataJobApplicationRepository extends JpaRepository<JobApp
 
     List<JobApplicationJpaEntity> findByJobIdOrderBySubmittedAtDesc(Long jobId);
 
+    boolean existsByJobIdAndApplicantUserId(Long jobId, Long applicantUserId);
+
+    boolean existsByJobIdAndApplicantEmailIgnoreCase(Long jobId, String applicantEmail);
+
     @Query("""
         SELECT a FROM JobApplicationJpaEntity a
         WHERE (:userId IS NOT NULL AND a.applicantUserId = :userId)

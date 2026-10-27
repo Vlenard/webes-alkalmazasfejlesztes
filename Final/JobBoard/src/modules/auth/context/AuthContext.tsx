@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '../types/auth'
+import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest, UpdateProfileRequest } from '../types/auth'
 import { authService } from '../services/authService'
 
 export interface AuthContextType {
@@ -9,6 +9,7 @@ export interface AuthContextType {
   isLoading: boolean
   login: (payload: LoginRequest) => Promise<AuthResponse>
   register: (payload: RegisterRequest) => Promise<AuthResponse>
+  updateProfile: (payload: UpdateProfileRequest) => Promise<AuthResponse>
   logout: () => void
 }
 
@@ -62,6 +63,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return response
   }
 
+  const updateProfile = async (payload: UpdateProfileRequest): Promise<AuthResponse> => {
+    const currentToken = token || authService.getToken()
+    if (!currentToken) {
+      throw new Error('Nincs érvényes bejelentkezett munkamenet.')
+    }
+    const response = await authService.updateProfile(currentToken, payload)
+    setToken(response.token)
+    setUser(response.user)
+    return response
+  }
+
   const logout = () => {
     authService.clearSession()
     setToken(null)
@@ -75,6 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     login,
     register,
+    updateProfile,
     logout,
   }
 

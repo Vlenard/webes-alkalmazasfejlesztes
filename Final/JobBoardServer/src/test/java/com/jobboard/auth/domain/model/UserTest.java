@@ -94,4 +94,33 @@ class UserTest {
         assertThat(userWithId.getId()).isEqualTo(42L);
         assertThat(userWithId.getName()).isEqualTo("Teszt Elek");
     }
+
+    @Test
+    @DisplayName("withUpdatedProfile sikeresen frissíti a felhasználó adatait, miközben a szerepkör változatlan marad")
+    void shouldUpdateUserProfileSuccessfully() {
+        User user = new User(10L, "Régi Név", "regi@example.com", "regi_hash", UserRole.APPLICANT, null, Instant.now());
+
+        User updated = user.withUpdatedProfile("Új Név", "uj@example.com", "Új Cég Kft.", "uj_hash");
+
+        assertThat(updated.getId()).isEqualTo(10L);
+        assertThat(updated.getName()).isEqualTo("Új Név");
+        assertThat(updated.getEmail()).isEqualTo("uj@example.com");
+        assertThat(updated.getCompanyName()).isEqualTo("Új Cég Kft.");
+        assertThat(updated.getRole()).isEqualTo(UserRole.APPLICANT); // Role remains APPLICANT!
+        assertThat(updated.getPasswordHash()).isEqualTo("uj_hash");
+    }
+
+    @Test
+    @DisplayName("withUpdatedProfile megtartja a meglévő értékeket, ha a paraméterek üresek vagy hiányoznak")
+    void shouldRetainExistingValuesWhenParametersAreNullOrBlank() {
+        User user = new User(10L, "Meglévő Név", "meglevo@example.com", "hash123", UserRole.APPLICANT, "Létező Cég", Instant.now());
+
+        User updated = user.withUpdatedProfile(null, " ", null, null);
+
+        assertThat(updated.getId()).isEqualTo(10L);
+        assertThat(updated.getName()).isEqualTo("Meglévő Név");
+        assertThat(updated.getEmail()).isEqualTo("meglevo@example.com");
+        assertThat(updated.getRole()).isEqualTo(UserRole.APPLICANT);
+        assertThat(updated.getPasswordHash()).isEqualTo("hash123");
+    }
 }

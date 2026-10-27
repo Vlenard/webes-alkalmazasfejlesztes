@@ -52,37 +52,41 @@ export const LoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend font-medium">Email cím</legend>
+            <div className="form-control">
+              <label className="label py-2 px-4">
+                <span className="label-text font-medium">Email cím</span>
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="pelda@email.hu"
-                className="input w-full"
+                className="input input-bordered w-full"
                 autoComplete="email"
               />
-            </fieldset>
+            </div>
 
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend font-medium">Jelszó</legend>
+            <div className="form-control">
+              <label className="label py-2 px-4">
+                <span className="label-text font-medium">Jelszó</span>
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="input w-full"
+                className="input input-bordered w-full"
                 autoComplete="current-password"
               />
-            </fieldset>
+            </div>
 
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn btn-primary w-full"
+                className="btn btn-primary py-2 px-4 w-full"
               >
                 {isSubmitting ? (
                   <>

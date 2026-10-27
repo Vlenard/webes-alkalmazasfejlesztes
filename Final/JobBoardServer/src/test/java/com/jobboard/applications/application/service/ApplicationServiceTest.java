@@ -76,6 +76,22 @@ class ApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Hiba dobása ha a jelentkező már jelentkezett az adott állásra")
+    void shouldThrowInvalidApplicationWhenApplicantAlreadyApplied() {
+        SubmitApplicationCommand command = new SubmitApplicationCommand(
+                1L, "Nagy Anna", "anna@example.com", "cv.pdf", 100L, "application/pdf", "data".getBytes(StandardCharsets.UTF_8)
+        );
+        when(jobRepositoryPort.findById(1L)).thenReturn(Optional.of(activeJob));
+        when(applicationRepositoryPort.existsByJobIdAndApplicant(1L, 100L, "anna@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> applicationService.submitApplication(command))
+                .isInstanceOf(InvalidApplicationException.class)
+                .hasMessageContaining("Már jelentkeztél erre az állásra.");
+
+        verify(applicationRepositoryPort, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Hiba dobása ha LEZÁRT (CLOSED) álláshirdetésre próbálnak jelentkezni")
     void shouldThrowInvalidApplicationWhenJobIsClosed() {
         SubmitApplicationCommand command = new SubmitApplicationCommand(2L, "Nagy Anna", "anna@example.com", "cv.pdf");

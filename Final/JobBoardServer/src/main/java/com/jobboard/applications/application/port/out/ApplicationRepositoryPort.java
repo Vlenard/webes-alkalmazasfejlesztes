@@ -13,6 +13,8 @@ public interface ApplicationRepositoryPort {
 
     List<JobApplication> findByApplicant(Long applicantUserId, String applicantEmail);
 
+    boolean existsByJobIdAndApplicant(Long jobId, Long applicantUserId, String applicantEmail);
+
     Optional<JobApplication> findById(Long id);
 
     long count();

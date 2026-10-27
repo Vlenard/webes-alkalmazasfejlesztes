@@ -18,22 +18,22 @@ export const JobCard = ({ job }: JobCardProps) => {
             </h3>
             <p className="text-sm font-medium text-primary">{job.company}</p>
           </div>
-          <span className="badge badge-primary badge-outline font-semibold">{job.badge}</span>
+          <span className="badge badge-primary badge-outline py-2 px-4 h-auto font-semibold">{job.badge}</span>
         </div>
 
         <p className="text-sm text-base-content/80 my-2 line-clamp-2">{job.description}</p>
 
         <div className="flex flex-wrap gap-2 text-xs text-base-content/70">
-          <span className="badge badge-ghost badge-sm">{job.location}</span>
-          <span className="badge badge-ghost badge-sm">{job.type}</span>
-          <span className="badge badge-success badge-sm font-semibold">{job.salary}</span>
+          <span className="badge badge-ghost py-2 px-4 h-auto">{job.location}</span>
+          <span className="badge badge-ghost py-2 px-4 h-auto">{job.type}</span>
+          <span className="badge badge-success py-2 px-4 h-auto font-semibold">{job.salary}</span>
         </div>
 
         <div className="card-actions justify-end mt-4">
-          <Link to={`/jobs/${job.id}`} className="btn btn-sm btn-outline btn-primary">
+          <Link to={`/jobs/${job.id}`} className="btn btn-outline btn-primary py-2 px-4">
             Részletek
           </Link>
-          <Link to={`/jobs/${job.id}`} className="btn btn-sm btn-primary">
+          <Link to={`/jobs/${job.id}`} className="btn btn-primary py-2 px-4">
             Jelentkezés
           </Link>
         </div>

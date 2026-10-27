@@ -3,7 +3,7 @@
 ## Current Status
 - **Stack**: Java 21, Spring Boot 3.3.4, Spring Data JPA, PostgreSQL 16, H2 Database, Springdoc OpenAPI.
 - **Architecture**: Hexagonal Architecture (Ports and Adapters) & Domain-Driven Design (DDD).
-- **Health**: Builds cleanly with `./mvnw clean test` (88/88 tests passing).
+- **Health**: Builds cleanly with `./mvnw clean test` (104/104 tests passing).
 - **Database**: PostgreSQL database `jobboard` running on port 5432; in-memory H2 test profile active for tests.
 
 ## Implemented Features & Milestones
@@ -19,6 +19,8 @@
   - `POST /api/auth/register` (user registration with role `APPLICANT` or `COMPANY_MANAGER`, company name, validation, duplicate email check).
   - `POST /api/auth/login` (email/password verification returning signed JWT token and user info).
   - `GET /api/auth/me` (retrieving authenticated profile via `Authorization: Bearer <token>`).
+  - `PUT /api/auth/profile` & `PATCH /api/auth/profile` (updating user personal name, email, company name, and changing password with current password verification and collision prevention; role is strictly immutable).
+  - Inbound port `UpdateUserProfileUseCase` and domain logic in `User.withUpdatedProfile`.
   - Shared port `AuthenticateTokenUseCase` for validating tokens across other bounded contexts.
   - Updated `GlobalExceptionHandler` with 400 (`InvalidUserDataException`), 409 (`UserAlreadyExistsException`), 401 (`InvalidCredentialsException`), and 403 (`UnauthorizedAccessException`).
   - Updated `WebCorsConfig` exposing `Authorization` and `Content-Disposition` headers and supporting `PATCH`.
@@ -37,17 +39,26 @@
   - `PATCH /api/applications/{id}/status`: Company managers can accept or reject candidate applications for their postings.
   - `GET /api/applications/{id}/resume`: Company managers can download candidate resumes with proper `Content-Disposition: attachment` headers and MIME types.
 - [x] Updated `JobDataSeeder`:
-  - Automatically provisions default test users if missing:
-    - Company Manager: `hr@techcorp.hu` / `password123` (`COMPANY_MANAGER`, `"TechCorp Hungary"`).
-    - Candidate: `jelentkezo@pelda.hu` / `password123` (`APPLICANT`).
-  - Associates initial preset job postings with the default company manager ID.
+  - Automatically provisions dedicated user accounts with `Start123` password:
+    - Jelentkező: `varadi1@gmail.com` / `Start123` (`APPLICANT`).
+    - Kezelő: `varadi2@gmail.com` / `Start123` (`COMPANY_MANAGER`, `"TechCorp Hungary"`).
+  - Multiple additional example applicant users with `Start123` password:
+    - `kovacs.anna@gmail.com` (`APPLICANT`)
+    - `nagy.peter@gmail.com` (`APPLICANT`)
+    - `toth.eszter@gmail.com` (`APPLICANT`)
+    - `szabo.david@gmail.com` (`APPLICANT`)
+    - `kiss.gabor@gmail.com` (`APPLICANT`)
+  - Legacy test users preserved for backwards compatibility:
+    - `hr@techcorp.hu` / `password123`
+    - `jelentkezo@pelda.hu` / `password123`
+  - 10 rich job postings covering all employment types (`FULL_TIME`, `REMOTE`, `PART_TIME`, `CONTRACT`), badges (`React`, `Node.js`, `Figma`, `Kubernetes`, `Java`, `Mobile`, `PostgreSQL`, `Python`, `JavaScript`, `Security`), locations, and statuses (8 `ACTIVE`, 2 `CLOSED`).
+  - 11 sample job applications covering all statuses (`ACCEPTED`, `REJECTED`, `PENDING`), with downloadable binary resumes (`.pdf`, `.docx`) attached.
+- [x] Frontend Preset Data Cleanup:
+  - Removed preset data (`badge: 'React'`) from employer job creation state and reset logic in `EmployerDashboardPage.tsx`.
+  - Rebuilt and packaged frontend into Spring Boot static resources (`/static`).
 - [x] Configured CORS for frontend development (`http://localhost:5173`).
 - [x] Configured OpenAPI / Swagger documentation at `/swagger-ui.html`.
-- [x] Written comprehensive test suite (88 automated tests):
-  - Domain entity unit tests (`JobTest`, `JobApplicationTest`, `UserTest`).
-  - Application service unit tests (`JobServiceTest`, `ApplicationServiceTest`, `AuthServiceTest`).
-  - Infrastructure unit tests (`Sha256PasswordEncoderAdapterTest`, `JwtTokenAdapterTest`).
-  - WebMvc controller slice tests (`JobRestControllerTest`, `ApplicationRestControllerTest`, `AuthRestControllerTest`).
-  - JPA persistence adapter tests (`JobJpaAdapterTest`, `ApplicationJpaAdapterTest`, `UserJpaAdapterTest`).
-  - End-to-end integration tests (`JobBoardIntegrationTest`, `AuthIntegrationTest`).
+- [x] Written comprehensive test suite (92 automated tests):
+  - Added `SeededUsersAndFeaturesIntegrationTest` verifying login, roles, my applications statuses, employer management, status changes, and resume downloading.
+  - All 92 automated tests passing cleanly.
 - [x] Created AI development guidelines (`AGENTS.md`) and Antigravity skills.

@@ -61,7 +61,7 @@ Located under `com.jobboard.<domain>.application`:
 - **Inbound Ports (`port.in`)**: Define use case contracts for driving adapters:
   - `GetJobsUseCase`, `GetJobDetailUseCase`, `CreateJobUseCase`, `UpdateJobStatusUseCase`.
   - `SubmitApplicationUseCase`, `GetApplicationsUseCase`, `UpdateApplicationStatusUseCase`, `DownloadResumeUseCase`.
-  - `RegisterUserUseCase`, `LoginUserUseCase`, `AuthenticateTokenUseCase`.
+  - `RegisterUserUseCase`, `LoginUserUseCase`, `AuthenticateTokenUseCase`, `UpdateUserProfileUseCase`.
 - **Outbound Ports (`port.out`)**: Define SPI contracts for persistence, security, and external services:
   - `JobRepositoryPort`, `ApplicationRepositoryPort`, `UserRepositoryPort`, `TokenServicePort`, `PasswordEncoderPort`.
 - **Services (`service`)**: Orchestrate use cases, verify domain business invariants across boundaries, and coordinate with outbound ports.

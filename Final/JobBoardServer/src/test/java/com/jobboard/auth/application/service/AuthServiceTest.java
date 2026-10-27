@@ -3,6 +3,7 @@ package com.jobboard.auth.application.service;
 import com.jobboard.auth.application.port.in.AuthenticateTokenUseCase;
 import com.jobboard.auth.application.port.in.LoginUserUseCase;
 import com.jobboard.auth.application.port.in.RegisterUserUseCase;
+import com.jobboard.auth.application.port.in.UpdateUserProfileUseCase;
 import com.jobboard.auth.application.port.out.PasswordEncoderPort;
 import com.jobboard.auth.application.port.out.TokenServicePort;
 import com.jobboard.auth.application.port.out.UserRepositoryPort;
@@ -193,5 +194,111 @@ class AuthServiceTest {
 
         when(tokenServicePort.verifyAndExtract(anyString())).thenThrow(new UnauthorizedAccessException("Lejárt"));
         assertThat(authService.authenticateOptional("Bearer expired.token")).isNull();
+    }
+
+    @Test
+    @DisplayName("Sikeres profilmódosítás új névvel és cégnévvel, változatlan szerepkörrel")
+    void shouldUpdateProfileSuccessfully() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenServicePort.generateToken(any(User.class))).thenReturn("refreshed.jwt.token");
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Módosított Név",
+                "janos@example.com",
+                "Új Cég Kft.",
+                null,
+                null
+        );
+
+        RegisterUserUseCase.AuthResult result = authService.updateProfile(1L, command);
+
+        assertThat(result.token()).isEqualTo("refreshed.jwt.token");
+        assertThat(result.user().getName()).isEqualTo("Módosított Név");
+        assertThat(result.user().getEmail()).isEqualTo("janos@example.com");
+        assertThat(result.user().getCompanyName()).isEqualTo("Új Cég Kft.");
+        assertThat(result.user().getRole()).isEqualTo(sampleUser.getRole()); // Preserved!
+        verify(userRepositoryPort).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Sikeres jelszócsere helyes jelenlegi jelszóval")
+    void shouldChangePasswordSuccessfully() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoderPort.matches("currentPass123", sampleUser.getPasswordHash())).thenReturn(true);
+        when(passwordEncoderPort.encode("newSecretPass")).thenReturn("newHashedPassword");
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenServicePort.generateToken(any(User.class))).thenReturn("new.token");
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Kiss János",
+                "janos@example.com",
+                null,
+                "currentPass123",
+                "newSecretPass"
+        );
+
+        RegisterUserUseCase.AuthResult result = authService.updateProfile(1L, command);
+
+        assertThat(result.user().getPasswordHash()).isEqualTo("newHashedPassword");
+        assertThat(result.user().getRole()).isEqualTo(sampleUser.getRole());
+    }
+
+    @Test
+    @DisplayName("Jelszócsere hiba esetén, ha a jelenlegi jelszó hibás")
+    void shouldThrowExceptionWhenCurrentPasswordIsInvalid() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoderPort.matches("wrongPass", sampleUser.getPasswordHash())).thenReturn(false);
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Kiss János",
+                "janos@example.com",
+                null,
+                "wrongPass",
+                "newSecretPass"
+        );
+
+        assertThatThrownBy(() -> authService.updateProfile(1L, command))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessageContaining("A jelenlegi jelszó helytelen.");
+    }
+
+    @Test
+    @DisplayName("Jelszócsere hiba, ha az új jelszó túl rövid")
+    void shouldThrowExceptionWhenNewPasswordIsTooShort() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoderPort.matches("currentPass123", sampleUser.getPasswordHash())).thenReturn(true);
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Kiss János",
+                "janos@example.com",
+                null,
+                "currentPass123",
+                "12345"
+        );
+
+        assertThatThrownBy(() -> authService.updateProfile(1L, command))
+                .isInstanceOf(InvalidUserDataException.class)
+                .hasMessageContaining("legalább 6 karakter");
+    }
+
+    @Test
+    @DisplayName("Profilmódosítás hiba, ha a megadott e-mail címmel már másik felhasználó rendelkezik")
+    void shouldThrowExceptionWhenEmailAlreadyExistsForAnotherUser() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        User otherUser = new User(2L, "Másik User", "masik@example.com", "hash", UserRole.APPLICANT, null, Instant.now());
+        when(userRepositoryPort.findByEmail("masik@example.com")).thenReturn(Optional.of(otherUser));
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Kiss János",
+                "masik@example.com",
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> authService.updateProfile(1L, command))
+                .isInstanceOf(UserAlreadyExistsException.class)
+                .hasMessageContaining("már regisztráltak");
     }
 }

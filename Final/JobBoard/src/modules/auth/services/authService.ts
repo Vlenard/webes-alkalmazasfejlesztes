@@ -1,4 +1,4 @@
-import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '../types/auth'
+import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest, UpdateProfileRequest } from '../types/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 export const TOKEN_KEY = 'jobboard_token'
@@ -94,6 +94,27 @@ export const authService = {
       throw new Error(errorMsg)
     }
 
+    return data
+  },
+
+  async updateProfile(token: string, payload: UpdateProfileRequest): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      const errorMsg = data?.message || data?.error || `Nem sikerült módosítani az adatokat (${response.status})`
+      throw new Error(errorMsg)
+    }
+
+    this.saveSession(data)
     return data
   },
 }

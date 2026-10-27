@@ -41,7 +41,7 @@ export default function MyApplicationsPage() {
         <button
           type="button"
           onClick={loadApplications}
-          className="btn btn-outline btn-sm self-start sm:self-auto"
+          className="btn btn-outline py-2 px-4 self-start sm:self-auto"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -86,7 +86,7 @@ export default function MyApplicationsPage() {
               Böngéssz a nyitott álláshirdetések között, és töltsd fel önéletrajzodat a számodra
               szimpatikus pozíciókra!
             </p>
-            <Link to="/jobs" className="btn btn-primary mt-2">
+            <Link to="/jobs" className="btn btn-primary py-2 px-4 mt-2">
               Álláshirdetések böngészése
             </Link>
           </div>
@@ -119,17 +119,17 @@ export default function MyApplicationsPage() {
 
                     <div className="flex items-center gap-2">
                       {isAccepted && (
-                        <span className="badge badge-success text-white font-semibold">
+                        <span className="badge badge-success text-white py-2 px-4 h-auto font-semibold">
                           Továbbjutott
                         </span>
                       )}
                       {isRejected && (
-                        <span className="badge badge-error text-white font-semibold">
+                        <span className="badge badge-error text-white py-2 px-4 h-auto font-semibold">
                           Elutasítva
                         </span>
                       )}
                       {isPending && (
-                        <span className="badge badge-warning font-semibold">
+                        <span className="badge badge-warning py-2 px-4 h-auto font-semibold">
                           Elbírálás alatt
                         </span>
                       )}
@@ -141,7 +141,7 @@ export default function MyApplicationsPage() {
                       📅 Beküldve: {new Date(app.submittedAt).toLocaleDateString('hu-HU')}
                     </span>
                     {app.resumeFileName && (
-                      <span className="badge badge-ghost badge-sm">
+                      <span className="badge badge-ghost py-2 px-4 h-auto">
                         📎 {app.resumeFileName}
                       </span>
                     )}

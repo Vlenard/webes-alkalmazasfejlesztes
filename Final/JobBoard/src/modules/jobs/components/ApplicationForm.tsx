@@ -109,7 +109,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
         </p>
         <div className="pt-2 flex justify-center gap-2">
           {onClose && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>
+            <button type="button" className="btn btn-primary py-2 px-4" onClick={onClose}>
               Bezárás
             </button>
           )}
@@ -128,7 +128,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
         {onClose && (
           <button
             type="button"
-            className="btn btn-sm btn-circle btn-ghost"
+            className="btn btn-ghost py-2 px-4"
             onClick={onClose}
             aria-label="Bezárás"
           >
@@ -146,7 +146,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Név mező */}
         <div className="form-control">
-          <label className="label">
+          <label className="label py-2 px-4">
             <span className="label-text font-medium">Teljes név *</span>
           </label>
           <input
@@ -162,7 +162,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
 
         {/* Email mező */}
         <div className="form-control">
-          <label className="label">
+          <label className="label py-2 px-4">
             <span className="label-text font-medium">Email cím *</span>
           </label>
           <input
@@ -178,7 +178,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
 
         {/* Önéletrajz feltöltés: kizárólag PDF vagy DOCX */}
         <div className="form-control">
-          <label className="label">
+          <label className="label py-2 px-4">
             <span className="label-text font-medium">Önéletrajz feltöltése (.pdf vagy .docx) *</span>
           </label>
           <input
@@ -189,7 +189,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
             onChange={handleFileChange}
             disabled={isSubmitting}
           />
-          <label className="label">
+          <label className="label py-2 px-4">
             <span className="label-text-alt text-base-content/60">
               {resumeFile
                 ? `Kiválasztott fájl: ${resumeFile.name} (${Math.round(resumeFile.size / 1024)} KB)`
@@ -203,7 +203,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
           {onClose && (
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
+              className="btn btn-ghost py-2 px-4"
               onClick={onClose}
               disabled={isSubmitting}
             >
@@ -212,7 +212,7 @@ export const ApplicationForm = ({ jobId, jobTitle, onClose, onSuccess }: Applica
           )}
           <button
             type="submit"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary py-2 px-4"
             disabled={isSubmitting}
           >
             {isSubmitting ? (

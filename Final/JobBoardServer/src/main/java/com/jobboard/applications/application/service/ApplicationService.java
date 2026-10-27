@@ -44,6 +44,10 @@ public class ApplicationService implements
             throw new InvalidApplicationException("Lezárt álláshirdetésre nem lehet jelentkezni.");
         }
 
+        if (applicationRepositoryPort.existsByJobIdAndApplicant(command.jobId(), command.applicantUserId(), command.applicantEmail())) {
+            throw new InvalidApplicationException("Már jelentkeztél erre az állásra.");
+        }
+
         JobApplication newApplication = JobApplication.createNew(
                 command.jobId(),
                 command.applicantName(),

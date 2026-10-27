@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/context/AuthContext'
 import { jobService } from '../services/jobService'
+import { Pagination } from '../../../shared/components/Pagination'
 import type {
   Job,
   JobStatus,
@@ -9,14 +10,44 @@ import type {
   CreateJobPayload,
 } from '../types/job'
 
+const DEFAULT_PAGE_SIZE = 4
+
 export default function EmployerDashboardPage() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Jobs state
   const [jobs, setJobs] = useState<Job[]>([])
   const [isLoadingJobs, setIsLoadingJobs] = useState(true)
   const [jobsError, setJobsError] = useState<string | null>(null)
   const [statusUpdatingJobId, setStatusUpdatingJobId] = useState<number | null>(null)
+
+  // Pagination state derived from URL search parameters
+  const rawPage = parseInt(searchParams.get('page') || '1', 10)
+  const pageFromUrl = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage
+  const pageSize = DEFAULT_PAGE_SIZE
+
+  const totalPages = Math.max(1, Math.ceil(jobs.length / pageSize))
+  const activePage = Math.min(pageFromUrl, totalPages)
+
+  // Sliced jobs for the active page
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (activePage - 1) * pageSize
+    return jobs.slice(startIndex, startIndex + pageSize)
+  }, [jobs, activePage, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (newPage <= 1) {
+        next.delete('page')
+      } else {
+        next.set('page', newPage.toString())
+      }
+      return next
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // Selected job & Applications state
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -35,7 +66,7 @@ export default function EmployerDashboardPage() {
     company: user?.companyName || '',
     type: 'Full-time',
     location: '',
-    badge: 'React',
+    badge: '',
     salary: '',
     description: '',
     requirements: [],
@@ -160,6 +191,11 @@ export default function EmployerDashboardPage() {
       }
       await jobService.createJob(payload)
       await loadEmployerJobs()
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('page')
+        return next
+      })
       setShowCreateModal(false)
       // Reset form
       setCreateForm({
@@ -167,7 +203,7 @@ export default function EmployerDashboardPage() {
         company: user?.companyName || '',
         type: 'Full-time',
         location: '',
-        badge: 'React',
+        badge: '',
         salary: '',
         description: '',
         requirements: [],
@@ -187,7 +223,7 @@ export default function EmployerDashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold">Céges Kezelőpult</h1>
-            <span className="badge badge-primary badge-sm">COMPANY_MANAGER</span>
+            <span className="badge badge-ghost py-2 px-4 h-auto">COMPANY_MANAGER</span>
           </div>
           <p className="text-sm text-base-content/70 mt-1">
             {user?.companyName
@@ -200,7 +236,7 @@ export default function EmployerDashboardPage() {
           <button
             type="button"
             onClick={loadEmployerJobs}
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline py-2 px-4"
             disabled={isLoadingJobs}
           >
             {isLoadingJobs ? (
@@ -212,7 +248,7 @@ export default function EmployerDashboardPage() {
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary py-2 px-4"
           >
             + Új hirdetés feladása
           </button>
@@ -229,7 +265,7 @@ export default function EmployerDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Bal oldal: Saját Hirdetések (7 oszlop) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between h-8">
             <h2 className="text-xl font-bold">
               Saját álláshirdetéseim ({jobs.length})
             </h2>
@@ -249,7 +285,7 @@ export default function EmployerDashboardPage() {
               <div>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary py-2 px-4"
                   onClick={() => setShowCreateModal(true)}
                 >
                   Hirdetés feladása most
@@ -259,7 +295,7 @@ export default function EmployerDashboardPage() {
           )}
 
           {!isLoadingJobs &&
-            jobs.map((job) => {
+            paginatedJobs.map((job) => {
               const isActive = job.status === 'ACTIVE'
               const isSelected = selectedJob?.id === job.id
               const isUpdating = statusUpdatingJobId === job.id
@@ -277,15 +313,15 @@ export default function EmployerDashboardPage() {
                     {/* Felső információs blokk */}
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="badge badge-outline badge-sm font-semibold">
+                        <span className="badge badge-outline py-2 px-4 h-auto font-semibold">
                           {job.badge}
                         </span>
                         {isActive ? (
-                          <span className="badge badge-success text-white badge-sm font-medium">
+                          <span className="badge badge-success text-white py-2 px-4 h-auto font-medium">
                             Aktív
                           </span>
                         ) : (
-                          <span className="badge badge-neutral badge-sm font-medium">
+                          <span className="badge badge-neutral py-2 px-4 h-auto font-medium">
                             Lezárva (Jelentkezőknek rejtett)
                           </span>
                         )}
@@ -312,7 +348,7 @@ export default function EmployerDashboardPage() {
                           type="button"
                           onClick={() => handleToggleJobStatus(job)}
                           disabled={isUpdating}
-                          className={`btn btn-sm ${
+                          className={`btn py-2 px-4 ${
                             isActive ? 'btn-outline btn-warning' : 'btn-outline btn-success'
                           }`}
                         >
@@ -328,7 +364,7 @@ export default function EmployerDashboardPage() {
                       <button
                         type="button"
                         onClick={() => handleSelectJob(job)}
-                        className={`btn btn-sm ${
+                        className={`btn py-2 px-4 ${
                           isSelected ? 'btn-primary' : 'btn-outline btn-primary'
                         }`}
                       >
@@ -339,11 +375,24 @@ export default function EmployerDashboardPage() {
                 </div>
               )
             })}
+
+          {!isLoadingJobs && jobs.length > 0 && (
+            <Pagination
+              currentPage={activePage}
+              totalPages={totalPages}
+              totalItems={jobs.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
+          )}
         </div>
 
-        {/* Jobb oldal: Kiválasztott Hirdetés Jelentkezői (5 oszlop) - Mobilon NEM sticky, csak lg:sticky lg:top-20 */}
-        <div className="lg:col-span-5 lg:sticky lg:top-20 w-full">
-          <div className="card bg-base-100 border border-base-200 shadow-md">
+        {/* Jobb oldal: Kiválasztott Hirdetés Jelentkezői (5 oszlop) - Mobilon NEM sticky, csak lg:sticky lg:top-8 */}
+        <div className="lg:col-span-5 lg:sticky lg:top-8 w-full space-y-4">
+          {/* Távtartó elem, amellyel a jelentkezők doboza pontosan a bal oldali első hirdetés kártyával egy vonalban kezdődik */}
+          <div className="hidden lg:block h-8" aria-hidden="true" />
+
+          <div className="card bg-base-100 border border-base-200 shadow-sm">
             <div className="card-body p-5">
               <div className="flex items-center justify-between border-b border-base-200 pb-3 mb-3">
                 <h3 className="font-bold text-lg">
@@ -356,7 +405,7 @@ export default function EmployerDashboardPage() {
                   )}
                 </h3>
                 {selectedJob && (
-                  <span className="badge badge-sm badge-ghost">
+                  <span className="badge badge-ghost py-2 px-4 h-auto">
                     {applications.length} fő
                   </span>
                 )}
@@ -418,17 +467,17 @@ export default function EmployerDashboardPage() {
 
                           <div>
                             {app.status === 'ACCEPTED' && (
-                              <span className="badge badge-success text-white badge-xs">
+                              <span className="badge badge-success text-white py-2 px-4 h-auto">
                                 Elfogadva
                               </span>
                             )}
                             {app.status === 'REJECTED' && (
-                              <span className="badge badge-error text-white badge-xs">
+                              <span className="badge badge-error text-white py-2 px-4 h-auto">
                                 Elutasítva
                               </span>
                             )}
                             {app.status === 'PENDING' && (
-                              <span className="badge badge-warning badge-xs">
+                              <span className="badge badge-warning py-2 px-4 h-auto">
                                 Elbírálásra vár
                               </span>
                             )}
@@ -441,7 +490,7 @@ export default function EmployerDashboardPage() {
                             type="button"
                             onClick={() => handleDownloadResume(app)}
                             disabled={isDownloading || !app.hasResume}
-                            className="btn btn-xs btn-outline gap-1 shrink-0"
+                            className="btn btn-outline py-2 px-4 gap-1 shrink-0"
                             title={
                               app.hasResume
                                 ? 'Önéletrajz letöltése (PDF/DOCX)'
@@ -466,7 +515,7 @@ export default function EmployerDashboardPage() {
                               type="button"
                               onClick={() => handleUpdateApplicationStatus(app.id, 'ACCEPTED')}
                               disabled={isProcessing || isAccepted}
-                              className={`btn btn-xs ${
+                              className={`btn py-2 px-4 ${
                                 isAccepted
                                   ? 'btn-disabled bg-success/20 text-success'
                                   : 'btn-success text-white'
@@ -478,7 +527,7 @@ export default function EmployerDashboardPage() {
                               type="button"
                               onClick={() => handleUpdateApplicationStatus(app.id, 'REJECTED')}
                               disabled={isProcessing || isRejected}
-                              className={`btn btn-xs ${
+                              className={`btn py-2 px-4 ${
                                 isRejected
                                   ? 'btn-disabled bg-error/20 text-error'
                                   : 'btn-error text-white'
@@ -506,8 +555,9 @@ export default function EmployerDashboardPage() {
               <h3 className="text-xl font-bold">Új álláshirdetés létrehozása</h3>
               <button
                 type="button"
-                className="btn btn-sm btn-circle btn-ghost"
+                className="btn btn-ghost py-2 px-4"
                 onClick={() => setShowCreateModal(false)}
+                aria-label="Bezárás"
               >
                 ✕
               </button>
@@ -523,7 +573,7 @@ export default function EmployerDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Pozíció neve */}
                 <div className="form-control">
-                  <label className="label">
+                  <label className="label py-2 px-4">
                     <span className="label-text font-medium">Pozíció megnevezése *</span>
                   </label>
                   <input
@@ -541,7 +591,7 @@ export default function EmployerDashboardPage() {
 
                 {/* Cég neve (előre kitöltve a profil cégnevével) */}
                 <div className="form-control">
-                  <label className="label">
+                  <label className="label py-2 px-4">
                     <span className="label-text font-medium">Cég neve *</span>
                   </label>
                   <input
@@ -561,7 +611,7 @@ export default function EmployerDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Típus */}
                 <div className="form-control">
-                  <label className="label">
+                  <label className="label py-2 px-4">
                     <span className="label-text font-medium">Munkarend *</span>
                   </label>
                   <select
@@ -584,7 +634,7 @@ export default function EmployerDashboardPage() {
 
                 {/* Helyszín */}
                 <div className="form-control">
-                  <label className="label">
+                  <label className="label py-2 px-4">
                     <span className="label-text font-medium">Helyszín *</span>
                   </label>
                   <input
@@ -602,7 +652,7 @@ export default function EmployerDashboardPage() {
 
                 {/* Technológia címke / badge */}
                 <div className="form-control">
-                  <label className="label">
+                  <label className="label py-2 px-4">
                     <span className="label-text font-medium">Technológia / Badge *</span>
                   </label>
                   <input
@@ -621,7 +671,7 @@ export default function EmployerDashboardPage() {
 
               {/* Bérsáv */}
               <div className="form-control">
-                <label className="label">
+                <label className="label py-2 px-4">
                   <span className="label-text font-medium">Bérsáv / Fizetés</span>
                 </label>
                 <input
@@ -638,7 +688,7 @@ export default function EmployerDashboardPage() {
 
               {/* Leírás */}
               <div className="form-control">
-                <label className="label">
+                <label className="label py-2 px-4">
                   <span className="label-text font-medium">Részletes pozíció leírás *</span>
                 </label>
                 <textarea
@@ -656,7 +706,7 @@ export default function EmployerDashboardPage() {
 
               {/* Elvárások soronként */}
               <div className="form-control">
-                <label className="label">
+                <label className="label py-2 px-4">
                   <span className="label-text font-medium">
                     Követelmények / Elvárások (soronként egy)
                   </span>
@@ -669,7 +719,7 @@ export default function EmployerDashboardPage() {
                   onChange={(e) => setRequirementsInput(e.target.value)}
                   disabled={isCreating}
                 ></textarea>
-                <label className="label">
+                <label className="label py-2 px-4">
                   <span className="label-text-alt text-base-content/60">
                     Minden új sor külön pontként jelenik majd meg az álláshirdetésben.
                   </span>
@@ -680,7 +730,7 @@ export default function EmployerDashboardPage() {
               <div className="modal-action">
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="btn btn-ghost py-2 px-4"
                   onClick={() => setShowCreateModal(false)}
                   disabled={isCreating}
                 >
@@ -688,7 +738,7 @@ export default function EmployerDashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-primary py-2 px-4"
                   disabled={isCreating}
                 >
                   {isCreating ? (

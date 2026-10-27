@@ -5,6 +5,7 @@ import JobsPage from '../../modules/jobs/pages/JobsPage'
 import JobDetailPage from '../../modules/jobs/pages/JobDetailPage'
 import LoginPage from '../../modules/auth/pages/LoginPage'
 import RegisterPage from '../../modules/auth/pages/RegisterPage'
+import ProfilePage from '../../modules/auth/pages/ProfilePage'
 import { ProtectedRoute } from '../../modules/auth/components/ProtectedRoute'
 import MyApplicationsPage from '../../modules/jobs/pages/MyApplicationsPage'
 import EmployerDashboardPage from '../../modules/jobs/pages/EmployerDashboardPage'
@@ -19,6 +20,14 @@ export const AppRoutes = () => {
         <Route path="jobs/:id" element={<JobDetailPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="my-applications"
           element={

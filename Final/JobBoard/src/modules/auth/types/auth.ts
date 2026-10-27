@@ -25,3 +25,11 @@ export interface RegisterRequest {
   role: UserRole
   companyName?: string
 }
+
+export interface UpdateProfileRequest {
+  name: string
+  email: string
+  companyName?: string | null
+  currentPassword?: string
+  newPassword?: string
+}

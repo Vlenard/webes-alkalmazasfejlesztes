@@ -58,4 +58,6 @@ com.jobboard/
    - Always run `./mvnw test` before finalizing tasks to ensure all tests pass.
 5. **Documentation**:
    - Internal documentation (`docs/`, `AGENTS.md`) MUST be maintained in English.
+6. **No AI-Positive or AI-Characteristic Icons**:
+   - Strictly forbidden to use AI-characteristic, AI-positive, or decorative generative AI emojis and icons (e.g., hourglass ⏳, sparkles ✨, robot 🤖, brain 🧠, magic wand 🪄, etc.) in any UI, API message, or documentation.
    - Keep `docs/status.md` and `docs/architecture.md` updated with new features and architectural changes.

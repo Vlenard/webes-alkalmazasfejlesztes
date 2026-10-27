@@ -18,11 +18,11 @@ Contains the application's foundational logic, global providers, and top-level r
 Features and domain logic are grouped by domain:
 - `modules/home/`: Landing page and presentation-focused components for the root view.
 - `modules/auth/`:
-  - `types/`: Authentication data contracts (`UserRole`, `AuthUser`, `LoginRequest`, `RegisterRequest`, `AuthResponse`).
-  - `services/`: `authService` for `/api/auth` HTTP endpoints and token storage (`jobboard_token`).
-  - `context/`: `AuthContext` and `AuthProvider` providing auth state and login/register/logout methods.
+  - `types/`: Authentication and profile data contracts (`UserRole`, `AuthUser`, `LoginRequest`, `RegisterRequest`, `UpdateProfileRequest`, `AuthResponse`).
+  - `services/`: `authService` for `/api/auth` HTTP endpoints (`/login`, `/register`, `/me`, `/profile`) and token storage (`jobboard_token`).
+  - `context/`: `AuthContext` and `AuthProvider` providing auth state and login/register/updateProfile/logout methods.
   - `components/`: `ProtectedRoute` for client-side route authorization with role guard.
-  - `pages/`: `LoginPage` and `RegisterPage` (featuring purpose-based role choice: Applicant vs Company Manager).
+  - `pages/`: `LoginPage`, `RegisterPage` (featuring purpose-based role choice: Applicant vs Company Manager), and `ProfilePage` (profile editing, credentials management).
 - `modules/jobs/`:
   - `types/`: Domain-specific TypeScript models (e.g., `Job`, `ApplicantApplicationItem`, `EmployerApplicationItem`).
   - `components/`: UI components belonging to the jobs domain (e.g., `JobCard`, `ApplicationForm`).
@@ -30,7 +30,7 @@ Features and domain logic are grouped by domain:
 
 ### 3. `src/shared/`
 Reusable logic and UI elements that cross domain boundaries:
-- `layouts/MainLayout.tsx`: The primary app shell containing the navigation bar (`navbar`), content container (`<Outlet />`), and footer (`footer`).
+- `layouts/MainLayout.tsx`: The primary app shell containing the responsive navigation system (desktop horizontal `navbar` + mobile sidebar `drawer`), content container (`<Outlet />`), and footer (`footer`).
 - `components/NotFoundPage.tsx`: Fallback 404 page.
 
 ### 4. `docs/` & `AGENTS.md`

@@ -5,6 +5,7 @@ import com.jobboard.auth.domain.model.UserRole;
 import com.jobboard.auth.infrastructure.web.dto.AuthResponseDto;
 import com.jobboard.auth.infrastructure.web.dto.LoginRequestDto;
 import com.jobboard.auth.infrastructure.web.dto.RegisterRequestDto;
+import com.jobboard.auth.infrastructure.web.dto.UpdateProfileRequestDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -104,5 +106,82 @@ class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(badPasswordRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("End-to-end profilmódosítás és jelszócsere: adatok frissítése -> belépés új jelszóval")
+    void updateUserProfileLifecycleTest() throws Exception {
+        // 1. Regisztráció
+        RegisterRequestDto registerRequest = new RegisterRequestDto(
+                "Kovács Károly",
+                "karoly.kovacs@example.com",
+                "oldSecret123",
+                UserRole.APPLICANT,
+                null
+        );
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        AuthResponseDto registerAuth = objectMapper.readValue(
+                registerResult.getResponse().getContentAsString(),
+                AuthResponseDto.class
+        );
+        String initialToken = registerAuth.token();
+
+        // 2. Profil módosítása (új név, új e-mail, új cégnév, jelszócsere - a szerepkör APPLICANT marad)
+        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto(
+                "Kovács Károly Vezető",
+                "karoly.kovacs.uj@example.com",
+                "Kovács Consulting Kft.",
+                "oldSecret123",
+                "brandNewSecret456"
+        );
+
+        MvcResult updateResult = mockMvc.perform(put("/api/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + initialToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.name").value("Kovács Károly Vezető"))
+                .andExpect(jsonPath("$.user.email").value("karoly.kovacs.uj@example.com"))
+                .andExpect(jsonPath("$.user.companyName").value("Kovács Consulting Kft."))
+                .andExpect(jsonPath("$.user.role").value("APPLICANT")) // Role remains immutable!
+                .andReturn();
+
+        AuthResponseDto updatedAuth = objectMapper.readValue(
+                updateResult.getResponse().getContentAsString(),
+                AuthResponseDto.class
+        );
+        String refreshedToken = updatedAuth.token();
+        assertThat(refreshedToken).isNotBlank();
+
+        // 3. /me ellenőrzés a frissített tokennel (szerepkör továbbra is APPLICANT)
+        mockMvc.perform(get("/api/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshedToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Kovács Károly Vezető"))
+                .andExpect(jsonPath("$.email").value("karoly.kovacs.uj@example.com"))
+                .andExpect(jsonPath("$.companyName").value("Kovács Consulting Kft."))
+                .andExpect(jsonPath("$.role").value("APPLICANT"));
+
+        // 4. Belépés próbálkozás a régi jelszóval -> 401 Unauthorized
+        LoginRequestDto oldLoginRequest = new LoginRequestDto("karoly.kovacs.uj@example.com", "oldSecret123");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(oldLoginRequest)))
+                .andExpect(status().isUnauthorized());
+
+        // 5. Belépés sikeres az új jelszóval
+        LoginRequestDto newLoginRequest = new LoginRequestDto("karoly.kovacs.uj@example.com", "brandNewSecret456");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newLoginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.name").value("Kovács Károly Vezető"))
+                .andExpect(jsonPath("$.user.role").value("APPLICANT"));
     }
 }

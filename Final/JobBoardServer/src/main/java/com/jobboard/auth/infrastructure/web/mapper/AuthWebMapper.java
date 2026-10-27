@@ -3,18 +3,33 @@ package com.jobboard.auth.infrastructure.web.mapper;
 import com.jobboard.auth.application.port.in.AuthenticateTokenUseCase;
 import com.jobboard.auth.application.port.in.LoginUserUseCase;
 import com.jobboard.auth.application.port.in.RegisterUserUseCase;
+import com.jobboard.auth.application.port.in.UpdateUserProfileUseCase;
 import com.jobboard.auth.domain.model.User;
 import com.jobboard.auth.infrastructure.web.dto.AuthResponseDto;
 import com.jobboard.auth.infrastructure.web.dto.LoginRequestDto;
 import com.jobboard.auth.infrastructure.web.dto.RegisterRequestDto;
+import com.jobboard.auth.infrastructure.web.dto.UpdateProfileRequestDto;
 import com.jobboard.auth.infrastructure.web.dto.UserResponseDto;
 import org.springframework.stereotype.Component;
 
 /**
- * Maps between web DTOs and application commands/results for authentication.
+ * Maps between web DTOs and application commands/results for authentication and profile management.
  */
 @Component
 public class AuthWebMapper {
+
+    public UpdateUserProfileUseCase.UpdateProfileCommand toUpdateProfileCommand(UpdateProfileRequestDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        return new UpdateUserProfileUseCase.UpdateProfileCommand(
+                dto.name(),
+                dto.email(),
+                dto.companyName(),
+                dto.currentPassword(),
+                dto.newPassword()
+        );
+    }
 
     public RegisterUserUseCase.RegisterCommand toRegisterCommand(RegisterRequestDto dto) {
         if (dto == null) {

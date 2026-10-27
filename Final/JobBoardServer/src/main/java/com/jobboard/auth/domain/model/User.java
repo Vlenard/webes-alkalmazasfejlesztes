@@ -36,6 +36,13 @@ public class User {
         return new User(id, this.name, this.email, this.passwordHash, this.role, this.companyName, this.createdAt);
     }
 
+    public User withUpdatedProfile(String newName, String newEmail, String newCompanyName, String newPasswordHash) {
+        String targetName = (newName != null && !newName.isBlank()) ? newName : this.name;
+        String targetEmail = (newEmail != null && !newEmail.isBlank()) ? newEmail : this.email;
+        String targetPasswordHash = (newPasswordHash != null && !newPasswordHash.isBlank()) ? newPasswordHash : this.passwordHash;
+        return new User(this.id, targetName, targetEmail, targetPasswordHash, this.role, newCompanyName, this.createdAt);
+    }
+
     private static void validate(String name, String email, String passwordHash, UserRole role) {
         if (name == null || name.isBlank()) {
             throw new InvalidUserDataException("A felhasználónév nem lehet üres.");

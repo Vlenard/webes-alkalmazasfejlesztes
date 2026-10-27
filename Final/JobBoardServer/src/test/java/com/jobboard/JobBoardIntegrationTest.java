@@ -42,10 +42,10 @@ class JobBoardIntegrationTest {
     @Test
     @DisplayName("Integrációs teszt: A seeded állások lekérdezhetők, szűrhetők és jelentkezés adható le")
     void testFullJobBoardWorkflow() throws Exception {
-        // 1. Ellenőrizzük, hogy a kezdő 4 állás elérhető a nyilvános listában (mind ACTIVE)
+        // 1. Ellenőrizzük, hogy a kezdő aktív állások elérhetők a nyilvános listában (mind ACTIVE, a lezártak rejtve)
         mockMvc.perform(get("/api/jobs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(4)))
+                .andExpect(jsonPath("$", hasSize(8)))
                 .andExpect(jsonPath("$[0].id").exists())
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"));
 
@@ -78,12 +78,39 @@ class JobBoardIntegrationTest {
                 .andExpect(jsonPath("$.message").value("A jelentkezést sikeresen rögzítettük!"))
                 .andExpect(jsonPath("$.applicationId").isNumber());
 
+        // Újra jelentkezés megakadályozása (400 Bad Request)
+        mockMvc.perform(post("/api/applications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(applicationRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Már jelentkeztél erre az állásra."));
+
         // 5. Ellenőrizzük, hogy a jelentkezés megjelenik az álláshoz tartozó listában
         mockMvc.perform(get("/api/jobs/1/applications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].applicantName").value("Teszt Elek"))
                 .andExpect(jsonPath("$[0].applicantEmail").value("teszt.elek@example.com"));
+    }
+
+    @Test
+    @DisplayName("Integrációs teszt: A statikus weboldal és az SPA kliens oldali útvonalak (index.html) kiszolgálásra kerülnek")
+    void testSpaAndStaticRoutesServed() throws Exception {
+        // Gyökér útvonal
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk());
+
+        // React Router kliens útvonalak újratöltésekor is index.html-t kap a böngésző
+        mockMvc.perform(get("/jobs"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk());
+
+        // Az API útvonalak továbbra is a REST vezérlőkhöz jutnak (JSON választ adnak)
+        mockMvc.perform(get("/api/jobs"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
     }
 
     @Test

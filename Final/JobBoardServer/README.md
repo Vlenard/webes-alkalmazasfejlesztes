@@ -28,7 +28,22 @@ A teljes tesztkészlet (28 automatizált teszt: domain unit tesztek, service tes
 ./mvnw spring-boot:run
 ```
 Az alkalmazás a `http://localhost:8080` címen indul el.
-Az induláskor a rendszer automatikusan betölti a frontend által használt 4 kezdő álláshirdetést, amennyiben az adatbázis még üres.
+### Belépési adatok (Seeder)
+A rendszer indulásakor a `JobDataSeeder` automatikusan feltölti az adatbázist a Final változat összes funkcióját lefedő tesztfelhasználókkal, hirdetésekkel és jelentkezésekkel:
+- **Jelentkező fiók**:
+  - Email: `varadi1@gmail.com`
+  - Jelszó: `Start123`
+  - Szerepkör: `APPLICANT` (eléri a `/jobs` és `/my-applications` felületeket, seeded jelentkezésekkel mindhárom státuszban: `ACCEPTED`, `REJECTED`, `PENDING`)
+- **Kezelő fiók**:
+  - Email: `varadi2@gmail.com`
+  - Jelszó: `Start123`
+  - Szerepkör: `COMPANY_MANAGER` (Cég: `TechCorp Hungary`, eléri a `/employer` felületet, kezeli a saját hirdetéseit és a beérkezett önéletrajzokat)
+- **További példa jelentkezők** (szintén `Start123` jelszóval):
+  - `kovacs.anna@gmail.com`
+  - `nagy.peter@gmail.com`
+  - `toth.eszter@gmail.com`
+  - `szabo.david@gmail.com`
+  - `kiss.gabor@gmail.com`
 
 ### Swagger / OpenAPI felület
 Az interaktív API dokumentáció és tesztelő felület elérhető a böngészőből:

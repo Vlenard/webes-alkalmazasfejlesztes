@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jobboard.auth.application.port.in.AuthenticateTokenUseCase;
 import com.jobboard.auth.application.port.in.LoginUserUseCase;
 import com.jobboard.auth.application.port.in.RegisterUserUseCase;
+import com.jobboard.auth.application.port.in.UpdateUserProfileUseCase;
 import com.jobboard.auth.domain.exception.InvalidCredentialsException;
 import com.jobboard.auth.domain.exception.UnauthorizedAccessException;
 import com.jobboard.auth.domain.exception.UserAlreadyExistsException;
@@ -11,6 +12,7 @@ import com.jobboard.auth.domain.model.User;
 import com.jobboard.auth.domain.model.UserRole;
 import com.jobboard.auth.infrastructure.web.dto.LoginRequestDto;
 import com.jobboard.auth.infrastructure.web.dto.RegisterRequestDto;
+import com.jobboard.auth.infrastructure.web.dto.UpdateProfileRequestDto;
 import com.jobboard.auth.infrastructure.web.mapper.AuthWebMapper;
 import com.jobboard.shared.infrastructure.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +53,9 @@ class AuthRestControllerTest {
 
     @MockBean
     private AuthenticateTokenUseCase authenticateTokenUseCase;
+
+    @MockBean
+    private UpdateUserProfileUseCase updateUserProfileUseCase;
 
     @Test
     @DisplayName("POST /api/auth/register sikeres regisztráció 201 CREATED")
@@ -183,5 +189,57 @@ class AuthRestControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.message").value("Hiányzó vagy érvénytelen Authorization fejléc."));
+    }
+
+    @Test
+    @DisplayName("PUT /api/auth/profile 200 OK sikeres profilfrissítés")
+    void shouldUpdateProfileSuccessfully() throws Exception {
+        AuthenticateTokenUseCase.AuthenticatedUser authUser =
+                new AuthenticateTokenUseCase.AuthenticatedUser(42L, "Régi Név", "regi@example.com", UserRole.APPLICANT, null);
+        when(authenticateTokenUseCase.authenticate("Bearer valid.token")).thenReturn(authUser);
+
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto(
+                "Új Név",
+                "uj@example.com",
+                "Új Cég Kft.",
+                "currentPass",
+                "newSecretPass"
+        );
+
+        User updatedUser = new User(42L, "Új Név", "uj@example.com", "new_hash", UserRole.APPLICANT, "Új Cég Kft.", Instant.now());
+        RegisterUserUseCase.AuthResult authResult = new RegisterUserUseCase.AuthResult("refreshed.token", updatedUser);
+        when(updateUserProfileUseCase.updateProfile(42L, new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Új Név", "uj@example.com", "Új Cég Kft.", "currentPass", "newSecretPass"
+        ))).thenReturn(authResult);
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer valid.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("refreshed.token"))
+                .andExpect(jsonPath("$.user.name").value("Új Név"))
+                .andExpect(jsonPath("$.user.email").value("uj@example.com"))
+                .andExpect(jsonPath("$.user.role").value("APPLICANT"))
+                .andExpect(jsonPath("$.user.companyName").value("Új Cég Kft."));
+    }
+
+    @Test
+    @DisplayName("PUT /api/auth/profile 400 Bad Request érvénytelen adatok esetén")
+    void shouldReturn400WhenUpdateProfileRequestIsInvalid() throws Exception {
+        UpdateProfileRequestDto invalidRequest = new UpdateProfileRequestDto(
+                "",
+                "invalid-email",
+                null,
+                null,
+                null
+        );
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer valid.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 }

@@ -1,13 +1,73 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { JobCard } from '../components/JobCard'
 import { useJobs } from '../hooks/useJobs'
+import { Pagination } from '../../../shared/components/Pagination'
+
+const DEFAULT_PAGE_SIZE = 4
+const PAGE_SIZE_OPTIONS = [4, 6, 8, 12]
 
 export default function JobsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Derive pagination directly from URL query parameters (single source of truth)
+  const rawPage = parseInt(searchParams.get('page') || '1', 10)
+  const pageFromUrl = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage
+
+  const rawSize = parseInt(searchParams.get('size') || '', 10)
+  const pageSize = PAGE_SIZE_OPTIONS.includes(rawSize) ? rawSize : DEFAULT_PAGE_SIZE
 
   const { jobs, isLoading, error } = useJobs({
     search: searchTerm,
   })
+
+  // Calculate total pages for current jobs list
+  const totalPages = Math.max(1, Math.ceil(jobs.length / pageSize))
+  const activePage = Math.min(pageFromUrl, totalPages)
+
+  // Sliced jobs for the active page
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (activePage - 1) * pageSize
+    return jobs.slice(startIndex, startIndex + pageSize)
+  }, [jobs, activePage, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (newPage <= 1) {
+        next.delete('page')
+      } else {
+        next.set('page', newPage.toString())
+      }
+      return next
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('page')
+      if (newSize === DEFAULT_PAGE_SIZE) {
+        next.delete('size')
+      } else {
+        next.set('size', newSize.toString())
+      }
+      return next
+    })
+  }
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val)
+    if (searchParams.has('page')) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('page')
+        return next
+      })
+    }
+  }
 
   return (
     <div className="space-y-6 my-6">
@@ -33,13 +93,13 @@ export default function JobsPage() {
             placeholder="Keresés pozíció vagy cég alapján..."
             className="input input-bordered w-full"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
           {searchTerm && (
             <button
               type="button"
-              className="btn btn-sm btn-ghost"
-              onClick={() => setSearchTerm('')}
+              className="btn btn-ghost py-2 px-4"
+              onClick={() => handleSearchChange('')}
             >
               Törlés
             </button>
@@ -66,11 +126,25 @@ export default function JobsPage() {
       )}
 
       {!isLoading && !error && jobs.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            {paginatedJobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+
+          <Pagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            totalItems={jobs.length}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            showCounter
+            showPageSizeSelector
+          />
+        </>
       )}
     </div>
   )

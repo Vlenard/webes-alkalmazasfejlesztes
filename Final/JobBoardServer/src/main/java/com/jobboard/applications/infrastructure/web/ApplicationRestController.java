@@ -177,6 +177,25 @@ public class ApplicationRestController {
         return ResponseEntity.ok(dtos);
     }
 
+    @GetMapping("/api/jobs/{jobId}/my-application")
+    @Operation(summary = "Bejelentkezett jelentkező jelentkezése a megadott állásra", description = "Visszaadja a bejelentkezett felhasználó ezen állásra leadott jelentkezését, ha van.")
+    public ResponseEntity<ApplicantApplicationResponseDto> getMyApplicationForJob(
+            @PathVariable Long jobId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader == null || authenticateTokenUseCase == null) {
+            throw new UnauthorizedAccessException("Hiányzó hitelesítési token.");
+        }
+        var user = authenticateTokenUseCase.authenticate(authHeader);
+
+        var views = getApplicationsUseCase.getApplicationsForApplicant(user.id(), user.email());
+        return views.stream()
+                .filter(v -> v.jobId().equals(jobId))
+                .findFirst()
+                .map(applicationWebMapper::toApplicantViewDto)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @GetMapping("/api/jobs/{jobId}/applications")
     @Operation(summary = "Egy adott álláshoz tartozó jelentkezések lekérdezése")
     public ResponseEntity<List<JobApplicationDetailDto>> getApplicationsByJob(@PathVariable Long jobId) {

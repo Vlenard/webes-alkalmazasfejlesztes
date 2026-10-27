@@ -44,3 +44,24 @@
   background-color: oklch(100% 0 0);
   color: oklch(0% 0 0);
 }
+
+button,
+.btn,
+label,
+.label,
+span.badge,
+.badge,
+nav a,
+.menu a {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.btn-square,
+.btn-circle,
+.drawer-overlay {
+  padding: 0 !important;
+}
+

@@ -51,6 +51,18 @@ public class ApplicationJpaAdapter implements ApplicationRepositoryPort {
     }
 
     @Override
+    public boolean existsByJobIdAndApplicant(Long jobId, Long applicantUserId, String applicantEmail) {
+        if (applicantUserId != null && repository.existsByJobIdAndApplicantUserId(jobId, applicantUserId)) {
+            return true;
+        }
+        if (applicantEmail != null && !applicantEmail.isBlank()
+                && repository.existsByJobIdAndApplicantEmailIgnoreCase(jobId, applicantEmail.trim())) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public Optional<JobApplication> findById(Long id) {
         return repository.findById(id).map(mapper::toDomain);
     }

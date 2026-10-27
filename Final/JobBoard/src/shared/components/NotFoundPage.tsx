@@ -7,7 +7,7 @@ export default function NotFoundPage() {
         <div>
           <h2 className="text-4xl font-bold text-error mb-2">404</h2>
           <p className="text-lg mb-4">Az oldal nem található!</p>
-          <Link to="/" className="btn btn-outline">
+          <Link to="/" className="btn btn-outline py-2 px-4">
             Vissza a kezdőlapra
           </Link>
         </div>

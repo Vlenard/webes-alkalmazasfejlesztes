@@ -39,3 +39,6 @@ src/
    - Avoid creating custom CSS files for individual components unless absolutely necessary.
 4. **Testing & Verification**:
    - Always verify that `npm run build` succeeds without TypeScript or bundling errors before finishing any task.
+5. **No AI-Positive or AI-Characteristic Icons**:
+   - Strictly forbidden to use AI-positive, AI-characteristic, or decorative AI emojis and symbols (e.g., hourglass ⏳, sparkles ✨, robot 🤖, brain 🧠, magic wand 🪄, etc.) in any UI component, badge, button, or label.
+   - Use clean, professional text labels and standard functional SVG icons without emojis.

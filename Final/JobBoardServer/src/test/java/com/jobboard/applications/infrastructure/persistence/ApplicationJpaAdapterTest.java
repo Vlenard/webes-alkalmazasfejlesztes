@@ -80,4 +80,19 @@ class ApplicationJpaAdapterTest {
         List<JobApplication> userApps = applicationJpaAdapter.findByApplicant(10L, "janos@example.com");
         assertThat(userApps).hasSize(2);
     }
+
+    @Test
+    @DisplayName("existsByJobIdAndApplicant helyesen ellenőrzi a felhasználóazonosító vagy email egyezést")
+    void shouldCheckExistingApplication() {
+        JobApplication app = new JobApplication(
+                null, 1L, "Kiss János", "janos@example.com", "cv.pdf", Instant.now(),
+                10L, ApplicationStatus.PENDING, "application/pdf", null
+        );
+        applicationJpaAdapter.save(app);
+
+        assertThat(applicationJpaAdapter.existsByJobIdAndApplicant(1L, 10L, null)).isTrue();
+        assertThat(applicationJpaAdapter.existsByJobIdAndApplicant(1L, null, "JANOS@EXAMPLE.COM")).isTrue();
+        assertThat(applicationJpaAdapter.existsByJobIdAndApplicant(1L, 99L, "other@example.com")).isFalse();
+        assertThat(applicationJpaAdapter.existsByJobIdAndApplicant(2L, 10L, "janos@example.com")).isFalse();
+    }
 }

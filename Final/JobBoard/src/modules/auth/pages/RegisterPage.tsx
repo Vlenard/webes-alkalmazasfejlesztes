@@ -71,7 +71,7 @@ export const RegisterPage = () => {
               </legend>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                 <label
-                  className={`flex flex-col p-3 border rounded-xl cursor-pointer transition-all ${
+                  className={`flex flex-col py-2 px-4 border rounded-xl cursor-pointer transition-all ${
                     role === 'APPLICANT'
                       ? 'border-primary bg-primary/5 shadow-xs'
                       : 'border-base-300 hover:border-base-content/40'
@@ -94,7 +94,7 @@ export const RegisterPage = () => {
                 </label>
 
                 <label
-                  className={`flex flex-col p-3 border rounded-xl cursor-pointer transition-all ${
+                  className={`flex flex-col py-2 px-4 border rounded-xl cursor-pointer transition-all ${
                     role === 'COMPANY_MANAGER'
                       ? 'border-primary bg-primary/5 shadow-xs'
                       : 'border-base-300 hover:border-base-content/40'
@@ -118,68 +118,76 @@ export const RegisterPage = () => {
               </div>
             </fieldset>
 
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend font-medium">Teljes név</legend>
+            <div className="form-control">
+              <label className="label py-2 px-4">
+                <span className="label-text font-medium">Teljes név</span>
+              </label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Pl. Kovács Béla"
-                className="input w-full"
+                className="input input-bordered w-full"
                 autoComplete="name"
               />
-            </fieldset>
+            </div>
 
             {role === 'COMPANY_MANAGER' && (
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend font-medium">
-                  Cég neve <span className="text-error">*</span>
-                </legend>
+              <div className="form-control">
+                <label className="label py-2 px-4">
+                  <span className="label-text font-medium">
+                    Cég neve <span className="text-error">*</span>
+                  </span>
+                </label>
                 <input
                   type="text"
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Pl. Tech Innovations Kft."
-                  className="input w-full"
+                  className="input input-bordered w-full"
                   autoComplete="organization"
                 />
-              </fieldset>
+              </div>
             )}
 
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend font-medium">Email cím</legend>
+            <div className="form-control">
+              <label className="label py-2 px-4">
+                <span className="label-text font-medium">Email cím</span>
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="kovacs.bela@example.hu"
-                className="input w-full"
+                className="input input-bordered w-full"
                 autoComplete="email"
               />
-            </fieldset>
+            </div>
 
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend font-medium">Jelszó</legend>
+            <div className="form-control">
+              <label className="label py-2 px-4">
+                <span className="label-text font-medium">Jelszó</span>
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Legalább 6 karakter"
-                className="input w-full"
+                className="input input-bordered w-full"
                 autoComplete="new-password"
                 minLength={6}
               />
-            </fieldset>
+            </div>
 
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn btn-primary w-full"
+                className="btn btn-primary py-2 px-4 w-full"
               >
                 {isSubmitting ? (
                   <>

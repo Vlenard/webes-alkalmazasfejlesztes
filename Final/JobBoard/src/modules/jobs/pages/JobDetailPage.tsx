@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/context/AuthContext'
 import { useJobDetail } from '../hooks/useJobDetail'
 import { ApplicationForm } from '../components/ApplicationForm'
+import { jobService } from '../services/jobService'
+import type { ApplicantApplicationItem, ApplicationStatus } from '../types/job'
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -11,6 +13,99 @@ export default function JobDetailPage() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [existingApplication, setExistingApplication] = useState<ApplicantApplicationItem | null>(null)
+
+  const isClosed = job?.status === 'CLOSED'
+  const isCompanyManager = user?.role === 'COMPANY_MANAGER'
+  const isApplicant = isAuthenticated && !isCompanyManager
+  const hasApplied = Boolean(existingApplication)
+
+  const getApplicationStatusConfig = (status?: ApplicationStatus) => {
+    switch (status) {
+      case 'ACCEPTED':
+        return {
+          alertClass: 'alert-success text-white',
+          statusText: 'Elfogadva',
+          icon: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          ),
+        }
+      case 'REJECTED':
+        return {
+          alertClass: 'alert-error text-white',
+          statusText: 'Elutasítva',
+          icon: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          ),
+        }
+      case 'PENDING':
+      default:
+        return {
+          alertClass: 'alert-warning',
+          statusText: 'Elbírálásra vár',
+          icon: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          ),
+        }
+    }
+  }
+
+  const appStatusConfig = getApplicationStatusConfig(existingApplication?.status)
+
+  const checkApplicationStatus = useCallback(async () => {
+    if (!jobId || !isApplicant) {
+      setExistingApplication(null)
+      return
+    }
+
+    try {
+      const apps = await jobService.getMyApplications()
+      const match = apps.find((app) => app.jobId === jobId)
+      setExistingApplication(match || null)
+    } catch {
+      setExistingApplication(null)
+    }
+  }, [jobId, isApplicant])
+
+  useEffect(() => {
+    checkApplicationStatus()
+  }, [checkApplicationStatus])
 
   if (isLoading) {
     return (
@@ -27,7 +122,7 @@ export default function JobDetailPage() {
           <span>{error || 'Az állásajánlat nem található.'}</span>
         </div>
         <div>
-          <Link to="/jobs" className="btn btn-outline">
+          <Link to="/jobs" className="btn btn-outline py-2 px-4">
             ← Vissza az állásokhoz
           </Link>
         </div>
@@ -35,11 +130,8 @@ export default function JobDetailPage() {
     )
   }
 
-  const isClosed = job.status === 'CLOSED'
-  const isCompanyManager = user?.role === 'COMPANY_MANAGER'
-
   const handleApplyClick = () => {
-    if (isClosed) {
+    if (isClosed || hasApplied) {
       return
     }
     if (!isAuthenticated) {
@@ -52,15 +144,44 @@ export default function JobDetailPage() {
     setShowApplicationModal(true)
   }
 
+  const formattedPostedAt = job.postedAt ? job.postedAt.replace(/-/g, '.') : ''
+
   return (
     <div className="space-y-6 my-6">
       {/* Breadcrumb / Vissza gomb */}
       <div className="flex items-center justify-between">
-        <Link to="/jobs" className="btn btn-sm btn-ghost gap-1">
+        <Link to="/jobs" className="btn btn-ghost py-2 px-4 gap-1">
           ← Vissza az összes álláshoz
         </Link>
-        <span className="text-xs text-base-content/60">Közzétéve: {job.postedAt}</span>
+        <span className="text-xs text-base-content/60 whitespace-pre">
+          {`Közzétéve:  ${formattedPostedAt}`}
+        </span>
       </div>
+
+      {/* Már jelentkezett tájékoztató doboz */}
+      {isApplicant && hasApplied && (
+        <div role="alert" className={`alert ${appStatusConfig.alertClass} shadow-sm`}>
+          {appStatusConfig.icon}
+          <div>
+            <h4 className="font-bold">Már jelentkeztél erre az állásra!</h4>
+            <div className="text-sm">
+              A jelentkezésedet rögzítettük
+              {existingApplication?.submittedAt && (
+                <> ({new Date(existingApplication.submittedAt).toLocaleDateString('hu-HU')})</>
+              )}
+              .{' '}
+              {existingApplication?.status && (
+                <span className="font-semibold">
+                  Jelenlegi állapot: {appStatusConfig.statusText}
+                </span>
+              )}
+              {existingApplication?.statusMessage && (
+                <span className="block mt-0.5 text-xs opacity-90">{existingApplication.statusMessage}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lezárt állás figyelmeztetés */}
       {isClosed && (
@@ -110,14 +231,14 @@ export default function JobDetailPage() {
         <div className="card-body">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="badge badge-primary badge-outline font-semibold">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="badge badge-primary badge-outline py-2 px-4 h-auto font-semibold">
                   {job.badge}
                 </span>
                 {isClosed ? (
-                  <span className="badge badge-error text-white font-medium">Lezárva</span>
+                  <span className="badge badge-error text-white py-2 px-4 h-auto font-medium">Lezárva</span>
                 ) : (
-                  <span className="badge badge-success text-white font-medium">Aktív</span>
+                  <span className="badge badge-success text-white py-2 px-4 h-auto font-medium">Aktív</span>
                 )}
               </div>
               <h1 className="text-3xl font-bold">{job.title}</h1>
@@ -126,19 +247,27 @@ export default function JobDetailPage() {
 
             <div className="flex flex-col sm:flex-row gap-2 md:self-start">
               {isClosed ? (
-                <button type="button" className="btn btn-disabled" disabled>
+                <button type="button" className="btn btn-disabled py-2 px-4" disabled>
                   Hirdetés lezárva
                 </button>
               ) : isCompanyManager ? (
-                <button type="button" className="btn btn-disabled" disabled>
+                <button type="button" className="btn btn-disabled py-2 px-4" disabled>
                   Céges kezelőként nem jelentkezhetsz
                 </button>
+              ) : hasApplied ? (
+                <button
+                  type="button"
+                  className="btn btn-disabled py-2 px-4 bg-success/20 text-success border-success/30 cursor-not-allowed"
+                  disabled
+                >
+                  Már jelentkeztél
+                </button>
               ) : !isAuthenticated ? (
-                <button type="button" className="btn btn-primary" onClick={handleApplyClick}>
+                <button type="button" className="btn btn-primary py-2 px-4" onClick={handleApplyClick}>
                   Belépés a jelentkezéshez
                 </button>
               ) : (
-                <button type="button" className="btn btn-primary" onClick={handleApplyClick}>
+                <button type="button" className="btn btn-primary py-2 px-4" onClick={handleApplyClick}>
                   Jelentkezés az állásra
                 </button>
               )}
@@ -187,23 +316,31 @@ export default function JobDetailPage() {
 
           {/* Alsó CTA sáv */}
           <div className="card-actions justify-end mt-8 pt-4 border-t border-base-200">
-            <Link to="/jobs" className="btn btn-outline">
+            <Link to="/jobs" className="btn btn-outline py-2 px-4">
               Vissza
             </Link>
             {isClosed ? (
-              <button type="button" className="btn btn-disabled" disabled>
+              <button type="button" className="btn btn-disabled py-2 px-4" disabled>
                 Hirdetés lezárva
               </button>
             ) : isCompanyManager ? (
-              <button type="button" className="btn btn-disabled" disabled>
+              <button type="button" className="btn btn-disabled py-2 px-4" disabled>
                 Céges kezelőként nem jelentkezhetsz
               </button>
+            ) : hasApplied ? (
+              <button
+                type="button"
+                className="btn btn-disabled py-2 px-4 bg-success/20 text-success border-success/30 cursor-not-allowed"
+                disabled
+              >
+                Már jelentkeztél
+              </button>
             ) : !isAuthenticated ? (
-              <button type="button" className="btn btn-primary" onClick={handleApplyClick}>
+              <button type="button" className="btn btn-primary py-2 px-4" onClick={handleApplyClick}>
                 Belépés a jelentkezéshez
               </button>
             ) : (
-              <button type="button" className="btn btn-primary" onClick={handleApplyClick}>
+              <button type="button" className="btn btn-primary py-2 px-4" onClick={handleApplyClick}>
                 Jelentkezés beküldése
               </button>
             )}
@@ -219,6 +356,7 @@ export default function JobDetailPage() {
               jobId={job.id}
               jobTitle={job.title}
               onClose={() => setShowApplicationModal(false)}
+              onSuccess={checkApplicationStatus}
             />
           </div>
           <div
