@@ -65,19 +65,68 @@ public class JobDataSeeder implements CommandLineRunner {
 
         if (userRepositoryPort != null && passwordEncoderPort != null) {
             // 1. Két dedikált felhasználó (Start123 jelszóval)
-            varadi1 = upsertUser("Váradi 1 (Jelentkező)", "varadi1@gmail.com", "Start123", UserRole.APPLICANT, null);
-            varadi2 = upsertUser("Váradi 2 (Kezelő)", "varadi2@gmail.com", "Start123", UserRole.COMPANY_MANAGER, "TechCorp Hungary");
+            varadi1 = upsertUser(
+                    "Váradi 1 (Jelentkező)",
+                    "varadi1@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("React ismeret", "TypeScript", "Tailwind CSS", "Java")
+            );
+            varadi2 = upsertUser(
+                    "Váradi 2 (Kezelő)",
+                    "varadi2@gmail.com",
+                    "Start123",
+                    UserRole.COMPANY_MANAGER,
+                    "TechCorp Hungary",
+                    List.of()
+            );
 
             // 2. További jelentkezők a példák és demonstráció kedvéért (Start123 jelszóval)
-            sampleApplicants.add(upsertUser("Kovács Anna", "kovacs.anna@gmail.com", "Start123", UserRole.APPLICANT, null));
-            sampleApplicants.add(upsertUser("Nagy Péter", "nagy.peter@gmail.com", "Start123", UserRole.APPLICANT, null));
-            sampleApplicants.add(upsertUser("Tóth Eszter", "toth.eszter@gmail.com", "Start123", UserRole.APPLICANT, null));
-            sampleApplicants.add(upsertUser("Szabó Dávid", "szabo.david@gmail.com", "Start123", UserRole.APPLICANT, null));
-            sampleApplicants.add(upsertUser("Kiss Gábor", "kiss.gabor@gmail.com", "Start123", UserRole.APPLICANT, null));
+            sampleApplicants.add(upsertUser(
+                    "Kovács Anna",
+                    "kovacs.anna@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("React ismeret", "TypeScript", "Tailwind CSS", "HTML/CSS")
+            ));
+            sampleApplicants.add(upsertUser(
+                    "Nagy Péter",
+                    "nagy.peter@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("Java", "Spring Boot", "PostgreSQL", "Docker")
+            ));
+            sampleApplicants.add(upsertUser(
+                    "Tóth Eszter",
+                    "toth.eszter@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("Figma", "Design System", "UI/UX", "Prototyping")
+            ));
+            sampleApplicants.add(upsertUser(
+                    "Szabó Dávid",
+                    "szabo.david@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("React Native", "TypeScript", "Mobile Development")
+            ));
+            sampleApplicants.add(upsertUser(
+                    "Kiss Gábor",
+                    "kiss.gabor@gmail.com",
+                    "Start123",
+                    UserRole.APPLICANT,
+                    null,
+                    List.of("Python", "Machine Learning", "PostgreSQL", "Linux")
+            ));
 
             // 3. Visszafelé kompatibilis korábbi tesztfelhasználók
-            upsertUser("TechCorp HR", "hr@techcorp.hu", "password123", UserRole.COMPANY_MANAGER, "TechCorp Hungary");
-            upsertUser("Példa Jelentkező", "jelentkezo@pelda.hu", "password123", UserRole.APPLICANT, null);
+            upsertUser("TechCorp HR", "hr@techcorp.hu", "password123", UserRole.COMPANY_MANAGER, "TechCorp Hungary", List.of());
+            upsertUser("Példa Jelentkező", "jelentkezo@pelda.hu", "password123", UserRole.APPLICANT, null, List.of("React ismeret", "JavaScript", "HTML/CSS"));
         }
 
         Long managerId = varadi2 != null ? varadi2.getId() : null;
@@ -92,6 +141,10 @@ public class JobDataSeeder implements CommandLineRunner {
     }
 
     private User upsertUser(String name, String email, String rawPassword, UserRole role, String companyName) {
+        return upsertUser(name, email, rawPassword, role, companyName, List.of());
+    }
+
+    private User upsertUser(String name, String email, String rawPassword, UserRole role, String companyName, List<String> initialSkills) {
         String encoded = passwordEncoderPort.encode(rawPassword);
         Optional<User> existing = userRepositoryPort.findByEmail(email);
         if (existing.isPresent()) {
@@ -99,15 +152,17 @@ public class JobDataSeeder implements CommandLineRunner {
             boolean needsUpdate = !passwordEncoderPort.matches(rawPassword, u.getPasswordHash())
                     || u.getRole() != role
                     || (companyName != null && !companyName.equals(u.getCompanyName()));
-            if (needsUpdate) {
-                User updated = new User(u.getId(), name, u.getEmail(), encoded, role, companyName, u.getCreatedAt());
-                log.info("Felhasználó frissítése: {} ({})", email, role);
+            boolean skillsNeedUpdate = (u.getSkills() == null || u.getSkills().isEmpty()) && (initialSkills != null && !initialSkills.isEmpty());
+            if (needsUpdate || skillsNeedUpdate) {
+                List<String> skillsToSet = (u.getSkills() != null && !u.getSkills().isEmpty()) ? u.getSkills() : initialSkills;
+                User updated = new User(u.getId(), name, u.getEmail(), encoded, role, companyName, u.getCreatedAt(), skillsToSet);
+                log.info("Felhasználó frissítése: {} ({}) skillekkel: {}", email, role, skillsToSet);
                 return userRepositoryPort.save(updated);
             }
             return u;
         } else {
-            log.info("Új felhasználó létrehozása: {} ({})", email, role);
-            User newUser = User.createNew(name, email, encoded, role, companyName);
+            log.info("Új felhasználó létrehozása: {} ({}) skillekkel: {}", email, role, initialSkills);
+            User newUser = User.createNew(name, email, encoded, role, companyName, initialSkills);
             return userRepositoryPort.save(newUser);
         }
     }
@@ -134,7 +189,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 20),
                             JobStatus.ACTIVE,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Senior Frontend Fejlesztő")
                     ),
                     // 2. NextWave Digital - Fullstack Node.js (ACTIVE)
                     new Job(
@@ -153,7 +209,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 19),
                             JobStatus.ACTIVE,
-                            null
+                            null,
+                            resolveDefaultSkillsForJobTitle("Fullstack Fejlesztő (Node.js + React)")
                     ),
                     // 3. InnoStudio - UI/UX Designer (ACTIVE)
                     new Job(
@@ -172,7 +229,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 18),
                             JobStatus.ACTIVE,
-                            null
+                            null,
+                            resolveDefaultSkillsForJobTitle("UI/UX & Product Designer")
                     ),
                     // 4. CloudScale Solutions - DevOps (ACTIVE)
                     new Job(
@@ -191,7 +249,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 17),
                             JobStatus.ACTIVE,
-                            null
+                            null,
+                            resolveDefaultSkillsForJobTitle("DevOps & Cloud Mérnök")
                     ),
                     // 5. TechCorp Hungary - Senior Backend Java (ACTIVE)
                     new Job(
@@ -211,7 +270,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 16),
                             JobStatus.ACTIVE,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Senior Backend Fejlesztő (Java / Spring Boot)")
                     ),
                     // 6. TechCorp Hungary - Mobilfejlesztő (ACTIVE)
                     new Job(
@@ -230,7 +290,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 15),
                             JobStatus.ACTIVE,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Mobilalkalmazás Fejlesztő (React Native)")
                     ),
                     // 7. TechCorp Hungary - Adatbázis Adminisztrátor (ACTIVE)
                     new Job(
@@ -249,7 +310,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 14),
                             JobStatus.ACTIVE,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Adatbázis Adminisztrátor & SQL Szakértő")
                     ),
                     // 8. TechCorp Hungary - AI & Machine Learning Mérnök (ACTIVE)
                     new Job(
@@ -268,7 +330,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 9, 13),
                             JobStatus.ACTIVE,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("AI & Machine Learning Mérnök")
                     ),
                     // 9. TechCorp Hungary - Junior Frontend Gyakornok (CLOSED)
                     new Job(
@@ -287,7 +350,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 8, 25),
                             JobStatus.CLOSED,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Junior Frontend Gyakornok")
                     ),
                     // 10. TechCorp Hungary - Kiberbiztonsági Elemző (CLOSED)
                     new Job(
@@ -306,7 +370,8 @@ public class JobDataSeeder implements CommandLineRunner {
                             ),
                             LocalDate.of(2026, 8, 10),
                             JobStatus.CLOSED,
-                            varadiManagerId
+                            varadiManagerId,
+                            resolveDefaultSkillsForJobTitle("Kiberbiztonsági Elemző")
                     )
             );
 
@@ -318,16 +383,58 @@ public class JobDataSeeder implements CommandLineRunner {
             return savedJobs;
         }
 
-        // Ha már léteznek hirdetések az adatbázisban, visszatöltjük a kezelőazonosítót a TechCorp-os hirdetésekhez
+        // Ha már léteznek hirdetések az adatbázisban, visszatöltjük a kezelőazonosítót és pótoljuk az üres skilleket
         List<Job> allJobs = jobRepositoryPort.findAll();
         for (Job job : allJobs) {
-            if (varadiManagerId != null && "TechCorp Hungary".equalsIgnoreCase(job.getCompany()) && job.getCreatedByUserId() == null) {
-                Job updated = job.withCreatedByUserId(varadiManagerId);
-                jobRepositoryPort.save(updated);
+            boolean needsSave = false;
+            Job target = job;
+            if (varadiManagerId != null && "TechCorp Hungary".equalsIgnoreCase(target.getCompany()) && target.getCreatedByUserId() == null) {
+                target = target.withCreatedByUserId(varadiManagerId);
+                needsSave = true;
+            }
+            if (target.getSkills() == null || target.getSkills().isEmpty()) {
+                List<String> defaultSkills = resolveDefaultSkillsForJobTitle(target.getTitle());
+                if (!defaultSkills.isEmpty()) {
+                    target = target.withSkillsChangedBy(defaultSkills, target.getCreatedByUserId());
+                    needsSave = true;
+                }
+            }
+            if (needsSave) {
+                jobRepositoryPort.save(target);
             }
         }
         return allJobs;
     }
+
+    private List<String> resolveDefaultSkillsForJobTitle(String title) {
+        if (title == null) {
+            return List.of();
+        }
+        String t = title.toLowerCase();
+        if (t.contains("senior frontend")) {
+            return List.of("React ismeret", "TypeScript", "Tailwind CSS", "HTML/CSS", "JavaScript");
+        } else if (t.contains("fullstack")) {
+            return List.of("Node.js", "React", "TypeScript", "PostgreSQL", "REST API");
+        } else if (t.contains("ui/ux")) {
+            return List.of("Figma", "Design System", "UI/UX", "Prototyping", "Wireframing");
+        } else if (t.contains("devops")) {
+            return List.of("Docker", "Kubernetes", "AWS", "CI/CD", "Linux");
+        } else if (t.contains("backend") || t.contains("spring boot")) {
+            return List.of("Java", "Spring Boot", "PostgreSQL", "Docker", "REST API", "Hibernate");
+        } else if (t.contains("mobilalkalmazás") || t.contains("react native")) {
+            return List.of("React Native", "TypeScript", "Mobile Development", "Android", "iOS");
+        } else if (t.contains("adatbázis") || t.contains("sql")) {
+            return List.of("PostgreSQL", "SQL", "Database Optimization", "Linux", "Docker");
+        } else if (t.contains("machine learning") || t.contains("ai")) {
+            return List.of("Python", "Machine Learning", "PyTorch", "Docker", "AI");
+        } else if (t.contains("junior frontend") || t.contains("gyakornok")) {
+            return List.of("JavaScript", "HTML/CSS", "React ismeret", "Git");
+        } else if (t.contains("kiberbiztonsági") || t.contains("security")) {
+            return List.of("Security", "Penetration Testing", "Linux", "Networking");
+        }
+        return List.of();
+    }
+
 
     private void seedApplications(List<Job> allJobs, User varadi1, List<User> applicants) {
         if (applicationRepositoryPort.count() > 0) {

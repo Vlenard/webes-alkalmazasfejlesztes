@@ -91,12 +91,12 @@ class JobServiceTest {
     }
 
     @Test
-    @DisplayName("createJob elmenti és visszaadja az új állást")
+    @DisplayName("createJob elmenti és visszaadja az új állást a megadott skillekkel")
     void shouldCreateJobSuccessfully() {
         CreateJobCommand command = new CreateJobCommand(
-                "Java Dev", "Backend Kft", JobType.REMOTE, "Remote", "Java", "1.2M", "Leírás", List.of("Java"), 10L
+                "Java Dev", "Backend Kft", JobType.REMOTE, "Remote", "Java", "1.2M", "Leírás", List.of("Java"), 10L, List.of("Java", "Spring Boot")
         );
-        Job savedJob = new Job(10L, "Java Dev", "Backend Kft", JobType.REMOTE, "Remote", "Java", "1.2M", "Leírás", List.of("Java"), LocalDate.now(), JobStatus.ACTIVE, 10L);
+        Job savedJob = new Job(10L, "Java Dev", "Backend Kft", JobType.REMOTE, "Remote", "Java", "1.2M", "Leírás", List.of("Java"), LocalDate.now(), JobStatus.ACTIVE, 10L, List.of("Java", "Spring Boot"));
         when(jobRepositoryPort.save(any(Job.class))).thenReturn(savedJob);
 
         Job result = jobService.createJob(command);
@@ -104,6 +104,64 @@ class JobServiceTest {
         assertThat(result.getId()).isEqualTo(10L);
         assertThat(result.getTitle()).isEqualTo("Java Dev");
         assertThat(result.getCreatedByUserId()).isEqualTo(10L);
+        assertThat(result.getSkills()).containsExactly("Java", "Spring Boot");
+        verify(jobRepositoryPort).save(any(Job.class));
+    }
+
+    @Test
+    @DisplayName("updateJobSkills sikeresen frissíti a hirdetés skilljeit ha a létrehozó kéri")
+    void shouldUpdateJobSkillsWhenCreatorRequests() {
+        Job existingJob = new Job(1L, "React Dev", "TechCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), LocalDate.now(), JobStatus.ACTIVE, 10L, List.of("React"));
+        when(jobRepositoryPort.findById(1L)).thenReturn(Optional.of(existingJob));
+        when(jobRepositoryPort.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Job result = jobService.updateJobSkills(1L, List.of("React", "TypeScript", "Next.js"), 10L);
+
+        assertThat(result.getSkills()).containsExactly("React", "TypeScript", "Next.js");
+        verify(jobRepositoryPort).save(any(Job.class));
+    }
+
+    @Test
+    @DisplayName("updateJobSkills UnauthorizedAccessException-t dob ha nem a létrehozó kéri a skillek módosítását")
+    void shouldThrowUnauthorizedWhenDifferentUserAttemptsSkillsChange() {
+        Job existingJob = new Job(1L, "React Dev", "TechCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), LocalDate.now(), JobStatus.ACTIVE, 10L, List.of("React"));
+        when(jobRepositoryPort.findById(1L)).thenReturn(Optional.of(existingJob));
+
+        // Másik azonosító (99L)
+        assertThatThrownBy(() -> jobService.updateJobSkills(1L, List.of("Vue"), 99L))
+                .isInstanceOf(UnauthorizedAccessException.class)
+                .hasMessageContaining("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+
+        // Null azonosító
+        assertThatThrownBy(() -> jobService.updateJobSkills(1L, List.of("Vue"), null))
+                .isInstanceOf(UnauthorizedAccessException.class)
+                .hasMessageContaining("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+    }
+
+    @Test
+    @DisplayName("updateJobSkills JobNotFoundException-t dob ha a hirdetés nem létezik")
+    void shouldThrowWhenJobNotFoundForSkillsUpdate() {
+        when(jobRepositoryPort.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.updateJobSkills(999L, List.of("Java"), 10L))
+                .isInstanceOf(JobNotFoundException.class)
+                .hasMessageContaining("999");
+    }
+
+    @Test
+    @DisplayName("updateJobSkills normalizálja és deduplikálja a megadott skilleket mentés előtt")
+    void shouldNormalizeAndDeduplicateSkillsOnUpdateJobSkills() {
+        Job existingJob = new Job(1L, "React Dev", "TechCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), LocalDate.now(), JobStatus.ACTIVE, 10L, List.of("React"));
+        when(jobRepositoryPort.findById(1L)).thenReturn(Optional.of(existingJob));
+        when(jobRepositoryPort.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<String> rawSkills = List.of("  Java  ", "java", "   ", "Spring Boot", "SPRING BOOT", "Docker");
+        Job result = jobService.updateJobSkills(1L, rawSkills, 10L);
+
+        assertThat(result.getSkills()).containsExactly("Java", "Spring Boot", "Docker");
         verify(jobRepositoryPort).save(any(Job.class));
     }
 

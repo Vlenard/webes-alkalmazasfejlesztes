@@ -98,4 +98,43 @@ class JwtTokenAdapterTest {
                 .isInstanceOf(UnauthorizedAccessException.class)
                 .hasMessageContaining("A JWT token lejárt");
     }
+
+    @Test
+    @DisplayName("JWT token helyesen tartalmazza és visszaadja a skillek listáját")
+    void shouldIncludeAndExtractSkillsInJwtToken() {
+        User user = new User(
+                15L,
+                "Skill Elek",
+                "skill.elek@example.com",
+                "hash",
+                UserRole.APPLICANT,
+                null,
+                Instant.now(),
+                java.util.List.of("Java", "Spring Boot", "PostgreSQL")
+        );
+
+        String token = jwtTokenAdapter.generateToken(user);
+        AuthenticateTokenUseCase.AuthenticatedUser authenticatedUser = jwtTokenAdapter.verifyAndExtract(token);
+
+        assertThat(authenticatedUser.skills()).containsExactly("Java", "Spring Boot", "PostgreSQL");
+    }
+
+    @Test
+    @DisplayName("Ha a JWT token nem tartalmaz skills claimet, üres listát ad vissza")
+    void shouldReturnEmptySkillsWhenTokenHasNoSkillsClaim() {
+        User user = new User(
+                16L,
+                "No Skill Béla",
+                "noskill@example.com",
+                "hash",
+                UserRole.APPLICANT,
+                null,
+                Instant.now()
+        );
+
+        String token = jwtTokenAdapter.generateToken(user);
+        AuthenticateTokenUseCase.AuthenticatedUser authenticatedUser = jwtTokenAdapter.verifyAndExtract(token);
+
+        assertThat(authenticatedUser.skills()).isEmpty();
+    }
 }

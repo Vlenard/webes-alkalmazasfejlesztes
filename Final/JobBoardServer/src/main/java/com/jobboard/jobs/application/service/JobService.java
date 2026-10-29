@@ -4,6 +4,7 @@ import com.jobboard.auth.domain.exception.UnauthorizedAccessException;
 import com.jobboard.jobs.application.port.in.CreateJobUseCase;
 import com.jobboard.jobs.application.port.in.GetJobDetailUseCase;
 import com.jobboard.jobs.application.port.in.GetJobsUseCase;
+import com.jobboard.jobs.application.port.in.UpdateJobSkillsUseCase;
 import com.jobboard.jobs.application.port.in.UpdateJobStatusUseCase;
 import com.jobboard.jobs.application.port.out.JobRepositoryPort;
 import com.jobboard.jobs.domain.exception.JobNotFoundException;
@@ -16,7 +17,7 @@ import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
-public class JobService implements GetJobsUseCase, GetJobDetailUseCase, CreateJobUseCase, UpdateJobStatusUseCase {
+public class JobService implements GetJobsUseCase, GetJobDetailUseCase, CreateJobUseCase, UpdateJobStatusUseCase, UpdateJobSkillsUseCase {
 
     private final JobRepositoryPort jobRepositoryPort;
 
@@ -62,7 +63,8 @@ public class JobService implements GetJobsUseCase, GetJobDetailUseCase, CreateJo
                 command.salary(),
                 command.description(),
                 command.requirements(),
-                command.createdByUserId()
+                command.createdByUserId(),
+                command.skills()
         );
         return jobRepositoryPort.save(newJob);
     }
@@ -80,4 +82,19 @@ public class JobService implements GetJobsUseCase, GetJobDetailUseCase, CreateJo
         }
         return jobRepositoryPort.save(updated);
     }
+
+    @Override
+    @Transactional
+    public Job updateJobSkills(Long jobId, List<String> skills, Long requestingUserId) {
+        Job existing = getJobById(jobId);
+        if (existing.getCreatedByUserId() != null && !existing.getCreatedByUserId().equals(requestingUserId)) {
+            throw new UnauthorizedAccessException("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+        }
+        Job updated = existing.withSkillsChangedBy(skills, requestingUserId);
+        if (updated.getCreatedByUserId() == null && requestingUserId != null) {
+            updated = updated.withCreatedByUserId(requestingUserId);
+        }
+        return jobRepositoryPort.save(updated);
+    }
 }
+

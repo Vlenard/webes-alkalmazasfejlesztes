@@ -21,7 +21,8 @@ public class UserPersistenceMapper {
                 entity.getPasswordHash(),
                 entity.getRole(),
                 entity.getCompanyName(),
-                entity.getCreatedAt()
+                entity.getCreatedAt(),
+                entity.getSkills()
         );
     }
 
@@ -36,7 +37,8 @@ public class UserPersistenceMapper {
                 domain.getPasswordHash(),
                 domain.getRole(),
                 domain.getCompanyName(),
-                domain.getCreatedAt()
+                domain.getCreatedAt(),
+                domain.getSkills()
         );
     }
 }

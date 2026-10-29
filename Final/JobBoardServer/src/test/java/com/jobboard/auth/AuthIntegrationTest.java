@@ -184,4 +184,63 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.user.name").value("Kovács Károly Vezető"))
                 .andExpect(jsonPath("$.user.role").value("APPLICANT"));
     }
+
+    @Test
+    @DisplayName("End-to-end skillek frissítése és lekérése a /me végponton")
+    void updateProfileWithSkillsLifecycleTest() throws Exception {
+        // 1. Regisztráció
+        RegisterRequestDto registerRequest = new RegisterRequestDto(
+                "Skill Béla",
+                "skill.bela@example.com",
+                "secret123",
+                UserRole.APPLICANT,
+                null
+        );
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        AuthResponseDto registerAuth = objectMapper.readValue(
+                registerResult.getResponse().getContentAsString(),
+                AuthResponseDto.class
+        );
+        String token = registerAuth.token();
+
+        // 2. Profil frissítése skillekkel
+        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto(
+                "Skill Béla",
+                "skill.bela@example.com",
+                null,
+                null,
+                null,
+                java.util.List.of("  React  ", "react", "TypeScript", "Tailwind CSS")
+        );
+
+        MvcResult updateResult = mockMvc.perform(put("/api/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.skills[0]").value("React"))
+                .andExpect(jsonPath("$.user.skills[1]").value("TypeScript"))
+                .andExpect(jsonPath("$.user.skills[2]").value("Tailwind CSS"))
+                .andReturn();
+
+        AuthResponseDto updatedAuth = objectMapper.readValue(
+                updateResult.getResponse().getContentAsString(),
+                AuthResponseDto.class
+        );
+        String refreshedToken = updatedAuth.token();
+
+        // 3. /me ellenőrzés
+        mockMvc.perform(get("/api/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshedToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills[0]").value("React"))
+                .andExpect(jsonPath("$.skills[1]").value("TypeScript"))
+                .andExpect(jsonPath("$.skills[2]").value("Tailwind CSS"));
+    }
 }

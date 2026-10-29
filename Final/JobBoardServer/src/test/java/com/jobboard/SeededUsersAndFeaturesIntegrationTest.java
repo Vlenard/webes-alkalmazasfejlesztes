@@ -199,4 +199,76 @@ class SeededUsersAndFeaturesIntegrationTest {
                     .andExpect(jsonPath("$.user.role").value("APPLICANT"));
         }
     }
+
+    @Test
+    @DisplayName("Seeder Teszt: varadi1 skillekkel rendelkezik, az álláslista illeszkedés szerint rendezett és varadi2 skilleket tud szerkeszteni")
+    void testRecommendationAndSkillsWorkflow() throws Exception {
+        // 1. Bejelentkezés mint varadi1 (APPLICANT)
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "varadi1@gmail.com",
+                                "password", "Start123"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.skills").isArray())
+                .andExpect(jsonPath("$.user.skills[0]").value("React ismeret"))
+                .andReturn();
+
+        String applicantToken = "Bearer " + objectMapper.readTree(loginResult.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).get("token").asText();
+
+        // 2. GET /api/jobs bejelentkezett APPLICANT-ként: a lista rendezett matchScore szerint csökkenő sorrendben
+        MvcResult jobsResult = mockMvc.perform(get("/api/jobs")
+                        .header(HttpHeaders.AUTHORIZATION, applicantToken))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode jobsArray = objectMapper.readTree(jobsResult.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        assertThat(jobsArray.isArray()).isTrue();
+        assertThat(jobsArray.size()).isGreaterThanOrEqualTo(8); // aktív állások
+
+        // Az első munka a legmagasabb pontszámú (React Frontend munka)
+        JsonNode firstJob = jobsArray.get(0);
+        assertThat(firstJob.get("matchScore").asInt()).isGreaterThanOrEqualTo(50);
+        assertThat(firstJob.get("recommended").asBoolean()).isTrue();
+        assertThat(firstJob.get("matchedSkills").size()).isGreaterThan(0);
+
+        // Az utolsó munka pontszáma kisebb vagy egyenlő
+        JsonNode lastJob = jobsArray.get(jobsArray.size() - 1);
+        assertThat(lastJob.get("matchScore").asInt()).isLessThanOrEqualTo(firstJob.get("matchScore").asInt());
+
+        // 3. GET /api/jobs/{id} APPLICANT-ként
+        Long firstJobId = firstJob.get("id").asLong();
+        mockMvc.perform(get("/api/jobs/" + firstJobId)
+                        .header(HttpHeaders.AUTHORIZATION, applicantToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(firstJobId))
+                .andExpect(jsonPath("$.matchScore").isNumber())
+                .andExpect(jsonPath("$.matchedSkills").isArray())
+                .andExpect(jsonPath("$.missingSkills").isArray())
+                .andExpect(jsonPath("$.recommended").isBoolean());
+
+        // 4. Bejelentkezés mint varadi2 (COMPANY_MANAGER)
+        MvcResult managerLogin = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "varadi2@gmail.com",
+                                "password", "Start123"
+                        ))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String managerToken = "Bearer " + objectMapper.readTree(managerLogin.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).get("token").asText();
+
+        // 5. PATCH /api/jobs/{id}/skills céges kezelőként
+        mockMvc.perform(patch("/api/jobs/" + firstJobId + "/skills")
+                        .header(HttpHeaders.AUTHORIZATION, managerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("skills", List.of("React", "TypeScript", "Tailwind CSS", "Next.js")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(firstJobId))
+                .andExpect(jsonPath("$.skills").isArray())
+                .andExpect(jsonPath("$.skills[3]").value("Next.js"));
+    }
 }
+

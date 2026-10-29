@@ -27,7 +27,8 @@ public class AuthWebMapper {
                 dto.email(),
                 dto.companyName(),
                 dto.currentPassword(),
-                dto.newPassword()
+                dto.newPassword(),
+                dto.skills()
         );
     }
 
@@ -63,7 +64,8 @@ public class AuthWebMapper {
                 user.getName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getCompanyName()
+                user.getCompanyName(),
+                user.getSkills()
         );
     }
 
@@ -76,7 +78,8 @@ public class AuthWebMapper {
                 user.name(),
                 user.email(),
                 user.role(),
-                user.companyName()
+                user.companyName(),
+                user.skills()
         );
     }
 

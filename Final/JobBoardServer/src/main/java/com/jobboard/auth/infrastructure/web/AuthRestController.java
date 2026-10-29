@@ -4,6 +4,8 @@ import com.jobboard.auth.application.port.in.AuthenticateTokenUseCase;
 import com.jobboard.auth.application.port.in.LoginUserUseCase;
 import com.jobboard.auth.application.port.in.RegisterUserUseCase;
 import com.jobboard.auth.application.port.in.UpdateUserProfileUseCase;
+import com.jobboard.auth.application.port.out.UserRepositoryPort;
+import com.jobboard.auth.domain.model.User;
 import com.jobboard.auth.infrastructure.web.dto.AuthResponseDto;
 import com.jobboard.auth.infrastructure.web.dto.LoginRequestDto;
 import com.jobboard.auth.infrastructure.web.dto.RegisterRequestDto;
@@ -13,6 +15,7 @@ import com.jobboard.auth.infrastructure.web.mapper.AuthWebMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 /**
  * REST controller exposing user registration, login, profile lookup, and profile update endpoints.
@@ -38,17 +43,29 @@ public class AuthRestController {
     private final AuthenticateTokenUseCase authenticateTokenUseCase;
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
     private final AuthWebMapper mapper;
+    private final UserRepositoryPort userRepositoryPort;
 
     public AuthRestController(RegisterUserUseCase registerUserUseCase,
                               LoginUserUseCase loginUserUseCase,
                               AuthenticateTokenUseCase authenticateTokenUseCase,
                               UpdateUserProfileUseCase updateUserProfileUseCase,
                               AuthWebMapper mapper) {
+        this(registerUserUseCase, loginUserUseCase, authenticateTokenUseCase, updateUserProfileUseCase, mapper, null);
+    }
+
+    @Autowired
+    public AuthRestController(RegisterUserUseCase registerUserUseCase,
+                              LoginUserUseCase loginUserUseCase,
+                              AuthenticateTokenUseCase authenticateTokenUseCase,
+                              UpdateUserProfileUseCase updateUserProfileUseCase,
+                              AuthWebMapper mapper,
+                              @Autowired(required = false) UserRepositoryPort userRepositoryPort) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUserUseCase = loginUserUseCase;
         this.authenticateTokenUseCase = authenticateTokenUseCase;
         this.updateUserProfileUseCase = updateUserProfileUseCase;
         this.mapper = mapper;
+        this.userRepositoryPort = userRepositoryPort;
     }
 
     @PostMapping("/register")
@@ -74,6 +91,12 @@ public class AuthRestController {
     @Operation(summary = "Aktuális felhasználó lekérdezése", description = "Visszaadja a Bearer tokenhez tartozó bejelentkezett felhasználó adatait.")
     public UserResponseDto getCurrentUser(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
         AuthenticateTokenUseCase.AuthenticatedUser user = authenticateTokenUseCase.authenticate(authHeader);
+        if (userRepositoryPort != null && user != null && user.id() != null) {
+            Optional<User> freshUser = userRepositoryPort.findById(user.id());
+            if (freshUser.isPresent()) {
+                return mapper.toUserResponseDto(freshUser.get());
+            }
+        }
         return mapper.toUserResponseDto(user);
     }
 

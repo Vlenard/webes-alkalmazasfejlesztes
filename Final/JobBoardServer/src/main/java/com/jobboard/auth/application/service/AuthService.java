@@ -176,7 +176,13 @@ public class AuthService implements RegisterUserUseCase, LoginUserUseCase, Authe
         // Handle company name (role is strictly immutable and preserved)
         String updatedCompanyName = command.companyName() != null ? command.companyName().trim() : user.getCompanyName();
 
-        User updatedUser = user.withUpdatedProfile(updatedName, updatedEmail, updatedCompanyName, updatedPasswordHash);
+        User updatedUser = user.withUpdatedProfile(
+                updatedName,
+                updatedEmail,
+                updatedCompanyName,
+                updatedPasswordHash,
+                command.skills()
+        );
         User savedUser = userRepositoryPort.save(updatedUser);
         String token = tokenServicePort.generateToken(savedUser);
 

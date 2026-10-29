@@ -242,4 +242,59 @@ class AuthRestControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
+
+    @Test
+    @DisplayName("PUT /api/auth/profile kezeli a skills listát a kérésben")
+    void shouldUpdateProfileWithSkillsSuccessfully() throws Exception {
+        AuthenticateTokenUseCase.AuthenticatedUser authUser =
+                new AuthenticateTokenUseCase.AuthenticatedUser(42L, "Régi Név", "regi@example.com", UserRole.APPLICANT, null);
+        when(authenticateTokenUseCase.authenticate("Bearer valid.token")).thenReturn(authUser);
+
+        java.util.List<String> skills = java.util.List.of("React", "TypeScript", "Tailwind CSS");
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto(
+                "Új Név",
+                "uj@example.com",
+                null,
+                null,
+                null,
+                skills
+        );
+
+        User updatedUser = new User(42L, "Új Név", "uj@example.com", "hash", UserRole.APPLICANT, null, Instant.now(), skills);
+        RegisterUserUseCase.AuthResult authResult = new RegisterUserUseCase.AuthResult("refreshed.token", updatedUser);
+        when(updateUserProfileUseCase.updateProfile(42L, new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Új Név", "uj@example.com", null, null, null, skills
+        ))).thenReturn(authResult);
+
+        mockMvc.perform(put("/api/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer valid.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.skills[0]").value("React"))
+                .andExpect(jsonPath("$.user.skills[1]").value("TypeScript"))
+                .andExpect(jsonPath("$.user.skills[2]").value("Tailwind CSS"));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/me visszaadja a skilleket a tokenből")
+    void shouldReturnCurrentUserWithSkills() throws Exception {
+        AuthenticateTokenUseCase.AuthenticatedUser user = new AuthenticateTokenUseCase.AuthenticatedUser(
+                42L,
+                "Jelentkező Béla",
+                "bela@applicant.com",
+                UserRole.APPLICANT,
+                null,
+                java.util.List.of("Java", "Spring Boot")
+        );
+
+        when(authenticateTokenUseCase.authenticate("Bearer valid.jwt.token")).thenReturn(user);
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer valid.jwt.token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(42))
+                .andExpect(jsonPath("$.skills[0]").value("Java"))
+                .andExpect(jsonPath("$.skills[1]").value("Spring Boot"));
+    }
 }

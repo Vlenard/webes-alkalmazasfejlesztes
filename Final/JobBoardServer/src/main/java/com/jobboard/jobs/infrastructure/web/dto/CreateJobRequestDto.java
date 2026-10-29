@@ -27,5 +27,28 @@ public record CreateJobRequestDto(
         String description,
 
         @NotEmpty(message = "Legalább egy követelmény megadása szükséges.")
-        List<String> requirements
-) {}
+        List<String> requirements,
+
+        List<String> skills
+) {
+    /**
+     * Backward-compatible 8-parameter constructor without skills.
+     */
+    public CreateJobRequestDto(
+            String title,
+            String company,
+            String type,
+            String location,
+            String badge,
+            String salary,
+            String description,
+            List<String> requirements
+    ) {
+        this(title, company, type, location, badge, salary, description, requirements, List.of());
+    }
+
+    public CreateJobRequestDto {
+        requirements = requirements != null ? List.copyOf(requirements) : List.of();
+        skills = skills != null ? List.copyOf(skills) : List.of();
+    }
+}

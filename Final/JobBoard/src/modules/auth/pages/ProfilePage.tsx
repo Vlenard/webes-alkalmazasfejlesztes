@@ -1,5 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { SkillBadgeInput } from '../../../shared/components/SkillBadgeInput'
+import { UserSummaryCard } from '../components/UserSummaryCard'
 
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth()
@@ -7,6 +9,7 @@ export const ProfilePage = () => {
   const [name, setName] = useState(user?.name || '')
   const [email, setEmail] = useState(user?.email || '')
   const [companyName, setCompanyName] = useState(user?.companyName || '')
+  const [skills, setSkills] = useState<string[]>(user?.skills || [])
 
   // Password fields
   const [showPasswordSection, setShowPasswordSection] = useState(false)
@@ -24,6 +27,7 @@ export const ProfilePage = () => {
       setName(user.name)
       setEmail(user.email)
       setCompanyName(user.companyName || '')
+      setSkills(user.skills || [])
     }
   }, [user])
 
@@ -32,6 +36,7 @@ export const ProfilePage = () => {
       setName(user.name)
       setEmail(user.email)
       setCompanyName(user.companyName || '')
+      setSkills(user.skills || [])
     }
     setCurrentPassword('')
     setNewPassword('')
@@ -87,6 +92,7 @@ export const ProfilePage = () => {
         companyName: isCompanyManager ? companyName.trim() : (companyName.trim() || null),
         currentPassword: wantsPasswordChange ? currentPassword : undefined,
         newPassword: wantsPasswordChange ? newPassword : undefined,
+        skills: !isCompanyManager ? skills : undefined,
       })
 
       setSuccess('A profiladataidat és a beállításaidat sikeresen mentettük!')
@@ -105,7 +111,6 @@ export const ProfilePage = () => {
     }
   }
 
-  const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : 'U'
   const isCompanyManager = user?.role === 'COMPANY_MANAGER'
 
   return (
@@ -119,32 +124,7 @@ export const ProfilePage = () => {
       </div>
 
       {/* User Summary Card */}
-      <div className="card bg-base-100 border border-base-300 shadow-sm p-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-          {/* Avatar initial badge */}
-          <div className="w-16 h-16 rounded-full bg-primary text-primary-content flex items-center justify-center text-2xl font-bold select-none shrink-0 shadow-sm">
-            {userInitial}
-          </div>
-
-          <div className="flex-1 text-center sm:text-left space-y-1">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h2 className="text-xl font-bold text-base-content">{user?.name}</h2>
-              <span className="badge badge-neutral text-xs">
-                {isCompanyManager ? 'Céges kezelő' : 'Álláskereső'}
-              </span>
-              {user?.companyName && (
-                <span className="badge badge-outline text-xs">
-                  {user.companyName}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-base-content/70">{user?.email}</p>
-            <p className="text-xs text-base-content/50">
-              Fiók azonosító: #{user?.id}
-            </p>
-          </div>
-        </div>
-      </div>
+      <UserSummaryCard user={user} />
 
       {/* Alerts */}
       {success && (
@@ -246,6 +226,38 @@ export const ProfilePage = () => {
               : 'Opcionálisan megadható jelenlegi vagy korábbi munkahely/szervezet.'}
           </p>
         </div>
+
+        {/* Szakmai készségek (Skillek) – kizárólag APPLICANT esetén */}
+        {!isCompanyManager && (
+          <div className="border-t border-base-300 pt-4 space-y-3">
+            <div>
+              <h3 className="text-lg font-semibold text-base-content">Szakmai készségek (Skillek)</h3>
+              <p className="text-xs text-base-content/60">
+                A megadott készségek alapján rangsoroljuk az állásajánlatokat és számítjuk ki az illeszkedési mutatót.
+              </p>
+            </div>
+
+            <SkillBadgeInput
+              skills={skills}
+              onChange={setSkills}
+              disabled={isSubmitting}
+              placeholder="pl. React ismeret, TypeScript, Spring Boot..."
+              helperText="A készségek hozzáadásához gépeld be az elnevezést és nyomj Entert vagy kattints a Hozzáadás gombra."
+              suggestedSkills={[
+                'React ismeret',
+                'TypeScript',
+                'JavaScript',
+                'Node.js',
+                'Java',
+                'Spring Boot',
+                'PostgreSQL',
+                'Python',
+                'Docker',
+                'Figma',
+              ]}
+            />
+          </div>
+        )}
 
         {/* Jelszócsere szekció */}
         <div className="border-t border-base-300 pt-4">

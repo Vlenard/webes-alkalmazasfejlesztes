@@ -56,4 +56,22 @@ class UserJpaAdapterTest {
         assertThat(found.get().isApplicant()).isTrue();
         assertThat(found.get().getCompanyName()).isNull();
     }
+
+    @Test
+    @DisplayName("Felhasználó skillekkel történő mentése és lekérdezése")
+    void shouldSaveAndFindUserWithSkills() {
+        User user = User.createNew(
+                "Skill Elek",
+                "elek.skills@example.com",
+                "hash",
+                UserRole.APPLICANT,
+                null,
+                java.util.List.of("Java", "Spring Boot", "Docker")
+        );
+        User saved = userJpaAdapter.save(user);
+
+        Optional<User> found = userJpaAdapter.findById(saved.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().getSkills()).containsExactly("Java", "Spring Boot", "Docker");
+    }
 }

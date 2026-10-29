@@ -3,6 +3,7 @@ package com.jobboard.auth.infrastructure.web.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
 /**
  * Request payload for updating the user profile and credentials.
@@ -26,6 +27,12 @@ public record UpdateProfileRequestDto(
         String currentPassword,
 
         @Schema(description = "Új jelszó (legalább 6 karakter)", example = "NewSecret123")
-        String newPassword
+        String newPassword,
+
+        @Schema(description = "Felhasználói szakmai készségek / skillek", example = "[\"Java\", \"Spring Boot\"]")
+        List<String> skills
 ) {
+    public UpdateProfileRequestDto(String name, String email, String companyName, String currentPassword, String newPassword) {
+        this(name, email, companyName, currentPassword, newPassword, null);
+    }
 }

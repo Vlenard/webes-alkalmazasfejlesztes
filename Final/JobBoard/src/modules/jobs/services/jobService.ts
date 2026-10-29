@@ -136,6 +136,29 @@ export const jobService = {
   },
 
   /**
+   * Updates a job's required skills. Only allowed for the creator employer.
+   */
+  async updateJobSkills(jobId: number, skills: string[]): Promise<Job> {
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/skills`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ skills }),
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      const errorMsg = data?.message || `Nem sikerült módosítani a készségeket (${response.status})`
+      throw new Error(errorMsg)
+    }
+
+    return data
+  },
+
+  /**
    * Submits a job application with a multipart resume file (.pdf or .docx).
    */
   async submitApplicationWithFile(data: {

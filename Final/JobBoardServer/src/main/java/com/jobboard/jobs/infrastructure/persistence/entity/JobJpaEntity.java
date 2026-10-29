@@ -50,17 +50,28 @@ public class JobJpaEntity {
     @Column(name = "created_by_user_id")
     private Long createdByUserId;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
+    @Column(name = "skill")
+    private List<String> skills = new ArrayList<>();
+
     public JobJpaEntity() {}
 
     public JobJpaEntity(Long id, String title, String company, String type, String location,
                         String badge, String salary, String description, List<String> requirements,
                         LocalDate postedAt) {
-        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, JobStatus.ACTIVE, null);
+        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, JobStatus.ACTIVE, null, new ArrayList<>());
     }
 
     public JobJpaEntity(Long id, String title, String company, String type, String location,
                         String badge, String salary, String description, List<String> requirements,
                         LocalDate postedAt, JobStatus status, Long createdByUserId) {
+        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, status, createdByUserId, new ArrayList<>());
+    }
+
+    public JobJpaEntity(Long id, String title, String company, String type, String location,
+                        String badge, String salary, String description, List<String> requirements,
+                        LocalDate postedAt, JobStatus status, Long createdByUserId, List<String> skills) {
         this.id = id;
         this.title = title;
         this.company = company;
@@ -73,6 +84,7 @@ public class JobJpaEntity {
         this.postedAt = postedAt;
         this.status = status != null ? status : JobStatus.ACTIVE;
         this.createdByUserId = createdByUserId;
+        this.skills = skills != null ? new ArrayList<>(skills) : new ArrayList<>();
     }
 
     public Long getId() {
@@ -169,5 +181,13 @@ public class JobJpaEntity {
 
     public void setCreatedByUserId(Long createdByUserId) {
         this.createdByUserId = createdByUserId;
+    }
+
+    public List<String> getSkills() {
+        return skills;
+    }
+
+    public void setSkills(List<String> skills) {
+        this.skills = skills != null ? new ArrayList<>(skills) : new ArrayList<>();
     }
 }

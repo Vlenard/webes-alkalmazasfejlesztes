@@ -4,6 +4,9 @@ import { useAuth } from '../../auth/context/AuthContext'
 import { useJobDetail } from '../hooks/useJobDetail'
 import { ApplicationForm } from '../components/ApplicationForm'
 import { jobService } from '../services/jobService'
+import { StatusBadge } from '../../../shared/components/StatusBadge'
+import { MatchScoreBadge } from '../components/MatchScoreBadge'
+import { SkillBadgeList } from '../../../shared/components/SkillBadgeList'
 import type { ApplicantApplicationItem, ApplicationStatus } from '../types/job'
 
 export default function JobDetailPage() {
@@ -235,11 +238,8 @@ export default function JobDetailPage() {
                 <span className="badge badge-primary badge-outline py-2 px-4 h-auto font-semibold">
                   {job.badge}
                 </span>
-                {isClosed ? (
-                  <span className="badge badge-error text-white py-2 px-4 h-auto font-medium">Lezárva</span>
-                ) : (
-                  <span className="badge badge-success text-white py-2 px-4 h-auto font-medium">Aktív</span>
-                )}
+                <StatusBadge status={job.status ?? 'ACTIVE'} />
+                <MatchScoreBadge score={job.matchScore} showZero={isApplicant} />
               </div>
               <h1 className="text-3xl font-bold">{job.title}</h1>
               <p className="text-lg font-medium text-primary mt-1">{job.company}</p>
@@ -311,6 +311,18 @@ export default function JobDetailPage() {
                   <li key={req}>{req}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Szükséges készségek szekció */}
+          {job.skills && job.skills.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h2 className="text-xl font-bold">Szükséges készségek</h2>
+              <SkillBadgeList
+                skills={job.skills}
+                matchedSkills={job.matchedSkills}
+                variant="match-highlight"
+              />
             </div>
           )}
 

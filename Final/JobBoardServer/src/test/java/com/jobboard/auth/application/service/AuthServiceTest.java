@@ -222,6 +222,82 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Sikeres profilmódosítás új skillekkel")
+    void shouldUpdateProfileWithSkillsSuccessfully() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenServicePort.generateToken(any(User.class))).thenReturn("refreshed.jwt.token");
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Módosított Név",
+                "janos@example.com",
+                null,
+                null,
+                null,
+                java.util.List.of("React", "TypeScript", "Tailwind CSS")
+        );
+
+        RegisterUserUseCase.AuthResult result = authService.updateProfile(1L, command);
+
+        assertThat(result.user().getSkills()).containsExactly("React", "TypeScript", "Tailwind CSS");
+        verify(userRepositoryPort).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("updateProfile: skillek normalizálása és deduplikálása profilmódosítás során")
+    void shouldNormalizeAndDeduplicateSkillsDuringUpdateProfile() {
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenServicePort.generateToken(any(User.class))).thenReturn("refreshed.jwt.token");
+
+        UpdateUserProfileUseCase.UpdateProfileCommand command = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Teszt Elek",
+                "elek@example.com",
+                null,
+                null,
+                null,
+                java.util.List.of("  Java  ", "java", "  ", "SPRING Boot", "spring boot", "Docker")
+        );
+
+        RegisterUserUseCase.AuthResult result = authService.updateProfile(1L, command);
+
+        assertThat(result.user().getSkills()).containsExactly("Java", "SPRING Boot", "Docker");
+    }
+
+    @Test
+    @DisplayName("updateProfile: null skillek megőrzik a meglévő skilleket, üres lista törli őket")
+    void shouldPreserveOrClearSkillsOnUpdateProfile() {
+        User userWithSkills = User.createNew("Teszt Elek", "elek@example.com", "hash", UserRole.APPLICANT, null, java.util.List.of("Java", "Kotlin"));
+        when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(userWithSkills));
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenServicePort.generateToken(any(User.class))).thenReturn("refreshed.jwt.token");
+
+        // 1. null skillek esetén meglévő skillek megmaradnak
+        UpdateUserProfileUseCase.UpdateProfileCommand commandKeep = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Teszt Elek",
+                "elek@example.com",
+                null,
+                null,
+                null,
+                null
+        );
+        RegisterUserUseCase.AuthResult resultKeep = authService.updateProfile(1L, commandKeep);
+        assertThat(resultKeep.user().getSkills()).containsExactly("Java", "Kotlin");
+
+        // 2. üres lista esetén kiürül a skillek listája
+        UpdateUserProfileUseCase.UpdateProfileCommand commandClear = new UpdateUserProfileUseCase.UpdateProfileCommand(
+                "Teszt Elek",
+                "elek@example.com",
+                null,
+                null,
+                null,
+                java.util.List.of()
+        );
+        RegisterUserUseCase.AuthResult resultClear = authService.updateProfile(1L, commandClear);
+        assertThat(resultClear.user().getSkills()).isEmpty();
+    }
+
+    @Test
     @DisplayName("Sikeres jelszócsere helyes jelenlegi jelszóval")
     void shouldChangePasswordSuccessfully() {
         when(userRepositoryPort.findById(1L)).thenReturn(Optional.of(sampleUser));

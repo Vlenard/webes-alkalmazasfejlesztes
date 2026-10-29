@@ -18,7 +18,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Standard HS256 JWT implementation using core Java cryptography and Jackson ObjectMapper.
@@ -68,6 +70,9 @@ public class JwtTokenAdapter implements TokenServicePort {
             payload.put("role", user.getRole().name());
             if (user.getCompanyName() != null) {
                 payload.put("companyName", user.getCompanyName());
+            }
+            if (user.getSkills() != null) {
+                payload.put("skills", user.getSkills());
             }
             payload.put("iat", now.getEpochSecond());
             payload.put("exp", expiresAt.getEpochSecond());
@@ -155,7 +160,16 @@ public class JwtTokenAdapter implements TokenServicePort {
             UserRole role = roleStr != null ? UserRole.valueOf(roleStr) : UserRole.APPLICANT;
             String companyName = (String) payload.get("companyName");
 
-            return new AuthenticateTokenUseCase.AuthenticatedUser(userId, name, email, role, companyName);
+            List<String> skills = List.of();
+            Object skillsObj = payload.get("skills");
+            if (skillsObj instanceof List<?> list) {
+                skills = list.stream()
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .toList();
+            }
+
+            return new AuthenticateTokenUseCase.AuthenticatedUser(userId, name, email, role, companyName, skills);
         } catch (Exception e) {
             throw new UnauthorizedAccessException("Érvénytelen adatok a JWT tokenben: " + e.getMessage());
         }

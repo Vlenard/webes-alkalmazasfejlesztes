@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string
   role: UserRole
   companyName?: string | null
+  skills?: string[]
 }
 
 export interface AuthResponse {
@@ -32,4 +33,5 @@ export interface UpdateProfileRequest {
   companyName?: string | null
   currentPassword?: string
   newPassword?: string
+  skills?: string[]
 }

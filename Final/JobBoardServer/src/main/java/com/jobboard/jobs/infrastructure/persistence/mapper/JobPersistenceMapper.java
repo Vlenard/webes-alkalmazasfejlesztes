@@ -25,7 +25,8 @@ public class JobPersistenceMapper {
                 entity.getRequirements(),
                 entity.getPostedAt(),
                 entity.getStatus() != null ? entity.getStatus() : JobStatus.ACTIVE,
-                entity.getCreatedByUserId()
+                entity.getCreatedByUserId(),
+                entity.getSkills()
         );
     }
 
@@ -45,7 +46,8 @@ public class JobPersistenceMapper {
                 domain.getRequirements(),
                 domain.getPostedAt(),
                 domain.getStatus() != null ? domain.getStatus() : JobStatus.ACTIVE,
-                domain.getCreatedByUserId()
+                domain.getCreatedByUserId(),
+                domain.getSkills()
         );
     }
 }

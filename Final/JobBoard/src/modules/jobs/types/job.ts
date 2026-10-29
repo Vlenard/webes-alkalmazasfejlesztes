@@ -14,6 +14,11 @@ export interface Job {
   postedAt: string
   status?: JobStatus
   createdByUserId?: number | null
+  skills?: string[]
+  matchScore?: number
+  matchedSkills?: string[]
+  missingSkills?: string[]
+  recommended?: boolean
 }
 
 export interface ApplicantApplicationItem {
@@ -48,6 +53,7 @@ export interface CreateJobPayload {
   salary: string
   description: string
   requirements: string[]
+  skills?: string[]
 }
 
 export interface JobApplication {

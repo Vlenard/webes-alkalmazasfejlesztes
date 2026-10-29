@@ -2,9 +2,13 @@ package com.jobboard.jobs.domain.model;
 
 import com.jobboard.jobs.domain.exception.InvalidJobDataException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Domain entity representing a Job Listing.
@@ -23,22 +27,32 @@ public class Job {
     private final LocalDate postedAt;
     private final JobStatus status;
     private final Long createdByUserId;
+    private final List<String> skills;
 
     /**
-     * Backward-compatible 10-parameter constructor (default status: ACTIVE, createdByUserId: null).
+     * Backward-compatible 10-parameter constructor (default status: ACTIVE, createdByUserId: null, skills: empty).
      */
     public Job(Long id, String title, String company, JobType type, String location,
                String badge, String salary, String description, List<String> requirements,
                LocalDate postedAt) {
-        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, JobStatus.ACTIVE, null);
+        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, JobStatus.ACTIVE, null, Collections.emptyList());
     }
 
     /**
-     * Canonical constructor initializing all fields of the Job aggregate.
+     * Backward-compatible 12-parameter constructor (default skills: empty).
      */
     public Job(Long id, String title, String company, JobType type, String location,
                String badge, String salary, String description, List<String> requirements,
                LocalDate postedAt, JobStatus status, Long createdByUserId) {
+        this(id, title, company, type, location, badge, salary, description, requirements, postedAt, status, createdByUserId, Collections.emptyList());
+    }
+
+    /**
+     * Canonical constructor initializing all 13 fields of the Job aggregate.
+     */
+    public Job(Long id, String title, String company, JobType type, String location,
+               String badge, String salary, String description, List<String> requirements,
+               LocalDate postedAt, JobStatus status, Long createdByUserId, List<String> skills) {
         validate(title, company, type, location, badge, salary, description);
         this.id = id;
         this.title = title.trim();
@@ -52,19 +66,49 @@ public class Job {
         this.postedAt = postedAt != null ? postedAt : LocalDate.now();
         this.status = status != null ? status : JobStatus.ACTIVE;
         this.createdByUserId = createdByUserId;
+        this.skills = normalizeSkills(skills);
     }
 
     public static Job createNew(String title, String company, JobType type, String location,
                                 String badge, String salary, String description,
                                 List<String> requirements) {
-        return createNew(title, company, type, location, badge, salary, description, requirements, null);
+        return createNew(title, company, type, location, badge, salary, description, requirements, null, Collections.emptyList());
     }
 
     public static Job createNew(String title, String company, JobType type, String location,
                                 String badge, String salary, String description,
                                 List<String> requirements, Long createdByUserId) {
+        return createNew(title, company, type, location, badge, salary, description, requirements, createdByUserId, Collections.emptyList());
+    }
+
+    public static Job createNew(String title, String company, JobType type, String location,
+                                String badge, String salary, String description,
+                                List<String> requirements, List<String> skills) {
+        return createNew(title, company, type, location, badge, salary, description, requirements, null, skills);
+    }
+
+    public static Job createNew(String title, String company, JobType type, String location,
+                                String badge, String salary, String description,
+                                List<String> requirements, Long createdByUserId, List<String> skills) {
         return new Job(null, title, company, type, location, badge, salary, description,
-                requirements, LocalDate.now(), JobStatus.ACTIVE, createdByUserId);
+                requirements, LocalDate.now(), JobStatus.ACTIVE, createdByUserId, skills);
+    }
+
+    private static List<String> normalizeSkills(List<String> rawSkills) {
+        if (rawSkills == null || rawSkills.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (String skill : rawSkills) {
+            if (skill != null) {
+                String trimmed = skill.trim();
+                if (!trimmed.isBlank() && seen.add(trimmed.toLowerCase(Locale.ROOT))) {
+                    result.add(trimmed);
+                }
+            }
+        }
+        return List.copyOf(result);
     }
 
     private static void validate(String title, String company, JobType type, String location,
@@ -123,12 +167,21 @@ public class Job {
             throw new InvalidJobDataException("Csak a hirdetés létrehozója módosíthatja vagy nyithatja újra a hirdetést.");
         }
         return new Job(this.id, this.title, this.company, this.type, this.location, this.badge,
-                this.salary, this.description, this.requirements, this.postedAt, newStatus, this.createdByUserId);
+                this.salary, this.description, this.requirements, this.postedAt, newStatus, this.createdByUserId, this.skills);
     }
 
     public Job withCreatedByUserId(Long createdByUserId) {
         return new Job(this.id, this.title, this.company, this.type, this.location, this.badge,
-                this.salary, this.description, this.requirements, this.postedAt, this.status, createdByUserId);
+                this.salary, this.description, this.requirements, this.postedAt, this.status, createdByUserId, this.skills);
+    }
+
+    public Job withSkillsChangedBy(List<String> newSkills, Long requestingUserId) {
+        if (this.createdByUserId != null && !this.createdByUserId.equals(requestingUserId)) {
+            throw new InvalidJobDataException("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+        }
+        return new Job(this.id, this.title, this.company, this.type, this.location, this.badge,
+                this.salary, this.description, this.requirements, this.postedAt, this.status,
+                this.createdByUserId, newSkills);
     }
 
     public Long getId() {
@@ -177,6 +230,10 @@ public class Job {
 
     public Long getCreatedByUserId() {
         return createdByUserId;
+    }
+
+    public List<String> getSkills() {
+        return skills;
     }
 
     @Override

@@ -1,13 +1,17 @@
 import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { JobCard } from '../components/JobCard'
+import { JobSearchBar } from '../components/JobSearchBar'
+import { RecommendedJobsSection } from '../components/RecommendedJobsSection'
 import { useJobs } from '../hooks/useJobs'
+import { useAuth } from '../../auth/context/AuthContext'
 import { Pagination } from '../../../shared/components/Pagination'
 
 const DEFAULT_PAGE_SIZE = 4
 const PAGE_SIZE_OPTIONS = [4, 6, 8, 12]
 
 export default function JobsPage() {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -18,19 +22,52 @@ export default function JobsPage() {
   const rawSize = parseInt(searchParams.get('size') || '', 10)
   const pageSize = PAGE_SIZE_OPTIONS.includes(rawSize) ? rawSize : DEFAULT_PAGE_SIZE
 
+  const userSkillsKey = user?.skills?.join(',') || ''
+
   const { jobs, isLoading, error } = useJobs({
     search: searchTerm,
+    userSkillsKey,
   })
 
+  const isApplicantWithSkills = Boolean(
+    user && user.role === 'APPLICANT' && user.skills && user.skills.length > 0
+  )
+
+  // Sort jobs by matchScore descending when applicant has skills
+  const sortedJobs = useMemo(() => {
+    if (!isApplicantWithSkills) {
+      return jobs
+    }
+
+    return [...jobs].sort((a, b) => {
+      const scoreA = a.matchScore ?? 0
+      const scoreB = b.matchScore ?? 0
+
+      // Primary sort: matchScore descending (0% non-matching pushed to the end)
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA
+      }
+
+      // Secondary sort: number of matched skills descending
+      const matchedCountA = a.matchedSkills?.length ?? 0
+      const matchedCountB = b.matchedSkills?.length ?? 0
+      if (matchedCountB !== matchedCountA) {
+        return matchedCountB - matchedCountA
+      }
+
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
+  }, [jobs, isApplicantWithSkills])
+
   // Calculate total pages for current jobs list
-  const totalPages = Math.max(1, Math.ceil(jobs.length / pageSize))
+  const totalPages = Math.max(1, Math.ceil(sortedJobs.length / pageSize))
   const activePage = Math.min(pageFromUrl, totalPages)
 
   // Sliced jobs for the active page
   const paginatedJobs = useMemo(() => {
     const startIndex = (activePage - 1) * pageSize
-    return jobs.slice(startIndex, startIndex + pageSize)
-  }, [jobs, activePage, pageSize])
+    return sortedJobs.slice(startIndex, startIndex + pageSize)
+  }, [sortedJobs, activePage, pageSize])
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
@@ -71,41 +108,7 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-6 my-6">
-      {/* Sticky search bar (just below navbar) */}
-      <div className="sticky top-20 z-40 bg-base-100 p-4 rounded-box shadow-md border border-base-300">
-        <div className="flex items-center gap-3">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-base-content/60 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          <input
-            type="text"
-            placeholder="Keresés pozíció vagy cég alapján..."
-            className="input input-bordered w-full"
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              className="btn btn-ghost py-2 px-4"
-              onClick={() => handleSearchChange('')}
-            >
-              Törlés
-            </button>
-          )}
-        </div>
-      </div>
+      <JobSearchBar searchTerm={searchTerm} onSearchChange={handleSearchChange} />
 
       {isLoading && (
         <div className="flex justify-center items-center py-16">
@@ -119,31 +122,57 @@ export default function JobsPage() {
         </div>
       )}
 
-      {!isLoading && !error && jobs.length === 0 && (
-        <div className="text-center py-12 bg-base-100 rounded-box border border-base-200">
-          <p className="text-base-content/70">Nincs a keresésnek megfelelő állásajánlat.</p>
-        </div>
-      )}
-
-      {!isLoading && !error && jobs.length > 0 && (
+      {!isLoading && !error && (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            {paginatedJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
-
-          <Pagination
-            currentPage={activePage}
-            totalPages={totalPages}
-            totalItems={jobs.length}
-            pageSize={pageSize}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            showCounter
-            showPageSizeSelector
+          <RecommendedJobsSection
+            jobs={jobs}
+            userSkills={user?.skills}
+            isApplicant={Boolean(user && user.role === 'APPLICANT')}
           />
+
+          {sortedJobs.length === 0 ? (
+            <div className="text-center py-12 bg-base-100 rounded-box border border-base-200">
+              <p className="text-base-content/70">Nincs a keresésnek megfelelő állásajánlat.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-base-200">
+                <div>
+                  <h2 className="text-xl font-bold text-base-content">
+                    {isApplicantWithSkills
+                      ? 'Összes állásajánlat (illeszkedés szerint rendezve)'
+                      : 'Összes állásajánlat'}
+                  </h2>
+                  <p className="text-sm text-base-content/70">
+                    {isApplicantWithSkills
+                      ? 'Az állások a profiljában megadott készségekhez való illeszkedés szerint vannak rangsorolva.'
+                      : 'Böngésszen az aktuális nyitott pozíciók között.'}
+                  </p>
+                </div>
+                <div className="text-sm text-base-content/60 font-medium">
+                  {sortedJobs.length} {sortedJobs.length === 1 ? 'állásajánlat' : 'állásajánlat'}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {paginatedJobs.map((job) => (
+                  <JobCard key={job.id} job={job} />
+                ))}
+              </div>
+
+              <Pagination
+                currentPage={activePage}
+                totalPages={totalPages}
+                totalItems={sortedJobs.length}
+                pageSize={pageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                showCounter
+                showPageSizeSelector
+              />
+            </div>
+          )}
         </>
       )}
     </div>

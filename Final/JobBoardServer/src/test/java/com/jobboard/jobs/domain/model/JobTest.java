@@ -154,4 +154,121 @@ class JobTest {
         assertThat(job.matchesBadge("React")).isFalse();
         assertThat(job.matchesBadge(null)).isTrue();
     }
+
+    @Test
+    @DisplayName("Skillek normalizálása, trimmelése és kis/nagybetű független deduplikálása az első formátum megőrzésével")
+    void shouldNormalizeAndDeduplicateSkills() {
+        Job job = Job.createNew(
+                "Frontend Fejlesztő", "DevCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), 10L, List.of("  React  ", "typescript", "REACT", "", "   ", "TypeScript", "Tailwind CSS")
+        );
+
+        assertThat(job.getSkills()).containsExactly("React", "typescript", "Tailwind CSS");
+    }
+
+    @Test
+    @DisplayName("Skillek sikeres módosítása a létrehozó által")
+    void shouldAllowSkillsChangeByCreator() {
+        Job job = Job.createNew(
+                "Frontend Fejlesztő", "DevCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), 10L, List.of("React")
+        );
+
+        Job updated = job.withSkillsChangedBy(List.of("React", "TypeScript", "Next.js"), 10L);
+        assertThat(updated.getSkills()).containsExactly("React", "TypeScript", "Next.js");
+        assertThat(updated.getTitle()).isEqualTo(job.getTitle());
+    }
+
+    @Test
+    @DisplayName("Hiba dobása ha nem a hirdetés létrehozója módosítaná a skilleket")
+    void shouldThrowExceptionWhenNonCreatorAttemptsSkillsChange() {
+        Job job = Job.createNew(
+                "Frontend Fejlesztő", "DevCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), 10L, List.of("React")
+        );
+
+        // Eltérő azonosítójú felhasználó
+        assertThatThrownBy(() -> job.withSkillsChangedBy(List.of("Java"), 99L))
+                .isInstanceOf(InvalidJobDataException.class)
+                .hasMessageContaining("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+
+        // Null azonosítójú felhasználó
+        assertThatThrownBy(() -> job.withSkillsChangedBy(List.of("Java"), null))
+                .isInstanceOf(InvalidJobDataException.class)
+                .hasMessageContaining("Csak a hirdetés létrehozója módosíthatja a szükséges skilleket.");
+    }
+
+    @Test
+    @DisplayName("withSkillsChangedBy: a skillek normalizálása, deduplikálása és az entitás mezőinek maradéktalan megőrzése")
+    void shouldNormalizeSkillsAndPreserveAllJobFieldsOnSkillsChange() {
+        Job job = new Job(
+                123L,
+                "Senior Backend Fejlesztő",
+                "CloudTech Kft",
+                JobType.REMOTE,
+                "Budapest",
+                "Java",
+                "1 500 000 HUF",
+                "Részletes leírás",
+                List.of("Java 21", "Spring Boot"),
+                LocalDate.of(2026, 1, 1),
+                JobStatus.ACTIVE,
+                42L,
+                List.of("Java")
+        );
+
+        List<String> rawSkills = List.of(
+                "  Vue.js  ",
+                "vue.js",
+                "VUE.JS",
+                "   ",
+                "",
+                "Pinia",
+                "  pinia  ",
+                "TypeScript"
+        );
+
+        Job updated = job.withSkillsChangedBy(rawSkills, 42L);
+
+        // Skillek ellenőrzése
+        assertThat(updated.getSkills()).containsExactly("Vue.js", "Pinia", "TypeScript");
+        assertThatThrownBy(() -> updated.getSkills().add("Docker"))
+                .isInstanceOf(UnsupportedOperationException.class);
+
+        // Összes többi mező megőrzésének ellenőrzése
+        assertThat(updated.getId()).isEqualTo(123L);
+        assertThat(updated.getTitle()).isEqualTo("Senior Backend Fejlesztő");
+        assertThat(updated.getCompany()).isEqualTo("CloudTech Kft");
+        assertThat(updated.getType()).isEqualTo(JobType.REMOTE);
+        assertThat(updated.getLocation()).isEqualTo("Budapest");
+        assertThat(updated.getBadge()).isEqualTo("Java");
+        assertThat(updated.getSalary()).isEqualTo("1 500 000 HUF");
+        assertThat(updated.getDescription()).isEqualTo("Részletes leírás");
+        assertThat(updated.getRequirements()).containsExactly("Java 21", "Spring Boot");
+        assertThat(updated.getPostedAt()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(updated.getStatus()).isEqualTo(JobStatus.ACTIVE);
+        assertThat(updated.getCreatedByUserId()).isEqualTo(42L);
+
+        // Null és üres skillek kezelése
+        Job emptySkillsJob = job.withSkillsChangedBy(null, 42L);
+        assertThat(emptySkillsJob.getSkills()).isEmpty();
+
+        Job blankSkillsJob = job.withSkillsChangedBy(List.of("  ", ""), 42L);
+        assertThat(blankSkillsJob.getSkills()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("withStatusChangedBy és withCreatedByUserId megőrzi a beállított skilleket")
+    void shouldPreserveSkillsOnStatusAndCreatorChanges() {
+        Job job = Job.createNew(
+                "Frontend Fejlesztő", "DevCorp", JobType.FULL_TIME, "BP", "React", "1M", "Desc",
+                List.of(), 10L, List.of("React", "TypeScript")
+        );
+
+        Job closed = job.withStatusChangedBy(JobStatus.CLOSED, 10L);
+        assertThat(closed.getSkills()).containsExactly("React", "TypeScript");
+
+        Job reassigned = job.withCreatedByUserId(20L);
+        assertThat(reassigned.getSkills()).containsExactly("React", "TypeScript");
+    }
 }
